@@ -1,0 +1,12 @@
+# production (PC only)
+Chrome >= 85
+Edge >= 85
+Firefox >= 90
+Safari >= 14.1
+
+# explicitly exclude old IE
+not IE 11
+not dead
+
+# node for tooling
+node >= 20.19.0

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "_version": "0.0.1",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    // 编译时无需导出类型文件
+    "noEmit": true,
+
+    // 编译时用模块最新规范，至于打包代码时的兼容问题，交给vite/webpack们解决
+    "module": "ESNext",
+    // 模块解析策略。同上
+    "moduleResolution": "bundler",
+    // 可以使用import...from导入json文件
+    "resolveJsonModule": true,
+    // 识别一个文件是模块还是脚本，由于使用了打包工具，所以所有文件都是模块
+    "moduleDetection": "force",
+
+    // 必须显式声明this的类型，否则报错
+    "noImplicitThis": true,
+    // 严格模式。将默认开启以下规则：
+    // noImplicitAny noImplicitThis alwaysStrict strictBindCallApply strictNullChecks strictFunctionTypes strictPropertyInitialization
+    "strict": true,
+
+    // 引入类型需要type关键字
+    "verbatimModuleSyntax": true,
+
+    // 编译目标用最新规范，至于打包代码时的兼容问题，交给vite/webpack们解决
+    "target": "ESNext",
+    // 合理编译class
+    "useDefineForClassFields": true,
+
+    // commonjs 和 es module之间可以互操作
+    "esModuleInterop": true,
+    // 引用路径中文件名大小写敏感
+    "forceConsistentCasingInFileNames": true,
+    // 会检查自建的和依赖库的所有.d.ts。调试自建d.ts文件时可以考虑打开
+    "skipLibCheck": true
+  }
+}

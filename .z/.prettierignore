@@ -1,0 +1,22 @@
+# 系统 信息文件
+.DS_Store/
+Thumbs.db
+
+# 编辑器配置文件
+.idea/
+.vscode/
+
+# 输出目录
+dist/
+
+# Log files
+*.log
+
+# 本地配置文件
+*.local
+
+# 缓存文件
+*.cache
+
+# 垃圾文件
+.Trashes
