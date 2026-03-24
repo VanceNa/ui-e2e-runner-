@@ -21,12 +21,14 @@ function resolveAuthTokenUrl(apiBaseURL: string): string {
   if (process.env.E2E_AUTH_TOKEN_URL) {
     return process.env.E2E_AUTH_TOKEN_URL;
   }
+  // 允许通过 path 覆盖不同环境网关路由，未配置时回落到历史默认路径。
   const authPath = process.env.E2E_AUTH_TOKEN_PATH || '/auth/oauth2/token';
   const normalizedPath = authPath.startsWith('/') ? authPath : `/${authPath}`;
   return `${apiBaseURL}${normalizedPath}`;
 }
 
 function tryExtractToken(json: any): { accessToken?: string; refreshToken?: string } {
+  // 兼容多种后端返回结构（直出字段 / data / result），降低接口改版对测试的影响。
   const accessToken =
     json?.access_token ||
     json?.accessToken ||
@@ -47,6 +49,7 @@ function tryExtractToken(json: any): { accessToken?: string; refreshToken?: stri
 function encryptPasswordForAdmin(password: string): string {
   const key = (process.env.E2E_PWD_ENC_KEY || 'xydxydxydxydhdkj').replace(/^['"]|['"]$/g, '');
   const keyBuffer = Buffer.from(key, 'utf8');
+  // admin 端沿用线上同款 aes-128-cfb（key 同时作为 iv）的加密约定。
   const cipher = createCipheriv('aes-128-cfb', keyBuffer, keyBuffer);
   cipher.setAutoPadding(false);
   return Buffer.concat([cipher.update(Buffer.from(password, 'utf8')), cipher.final()]).toString('base64');

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marketing HSD iPhone12</title>
+    <style>
+      :root {
+        --bg: #eef3fb;
+        --panel: rgba(255, 255, 255, 0.92);
+        --line: rgba(25, 40, 70, 0.12);
+        --text: #172033;
+        --muted: #64748b;
+        --accent: #0b63f6;
+        --danger: #db3a34;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(11, 99, 246, 0.15), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(15, 157, 122, 0.12), transparent 24%),
+          var(--bg);
+      }
+      .wrap {
+        min-height: 100vh;
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 18px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: 0 18px 42px rgba(16, 24, 40, 0.08);
+      }
+      .side { padding: 22px; display:flex; flex-direction:column; gap:16px; }
+      h1 { margin:0; font-size:30px; }
+      .desc { color:var(--muted); line-height:1.6; font-size:14px; }
+      .case { border:1px solid var(--line); border-radius:16px; padding:16px; background:rgba(255,255,255,0.78); }
+      .case h2 { margin:0 0 10px; font-size:18px; }
+      .meta { font-size:13px; color:var(--muted); line-height:1.6; }
+      .actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+      button, a.link-btn {
+        border:0; border-radius:12px; padding:11px 16px; background:var(--accent); color:#fff; cursor:pointer; font-weight:700; text-decoration:none; display:inline-flex; align-items:center;
+      }
+      button.secondary, a.secondary { background:#fff; color:var(--text); border:1px solid var(--line); }
+      .main { display:grid; grid-template-rows:auto 1fr; gap:16px; }
+      .status { padding:18px 20px; display:flex; justify-content:space-between; align-items:center; }
+      .status-title { font-size:20px; font-weight:700; }
+      .status-sub { margin-top:6px; color:var(--muted); font-size:13px; }
+      .badge { border-radius:999px; padding:8px 12px; font-size:12px; font-weight:800; background:rgba(11,99,246,.1); color:var(--accent); }
+      .grid { display:grid; grid-template-columns:1.2fr .8fr; gap:16px; min-height:0; }
+      .preview { padding:14px; min-height:0; }
+      .frame { height:calc(100% - 34px); min-height:520px; border:1px solid var(--line); border-radius:16px; background:linear-gradient(180deg,#f7fafc,#e6edf8); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+      .frame img { width:100%; height:100%; object-fit:contain; }
+      .placeholder { color:var(--muted); }
+      .preview-meta { margin-top:10px; display:flex; justify-content:space-between; font-size:12px; color:var(--muted); }
+      .logs { display:grid; grid-template-rows:auto 1fr; min-height:0; }
+      .logs-head { padding:14px 16px; border-bottom:1px solid var(--line); font-weight:700; }
+      pre { margin:0; padding:16px; overflow:auto; background:#0f172a; color:#d8e5ff; font-size:12px; line-height:1.6; }
+      @media (max-width: 1100px) { .wrap { grid-template-columns:1fr; } .grid { grid-template-columns:1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel side">
+        <div>
+          <h1>Marketing HSD</h1>
+          <div class="desc">固定使用 iPhone 12 模式。登录后先进入“进件”菜单，再进入“惠时代客户进件”页面。</div>
+        </div>
+        <div id="case-card" class="case">
+          <h2>加载中...</h2>
+        </div>
+      </aside>
+      <main class="main">
+        <section class="panel status">
+          <div>
+            <div id="status-title" class="status-title">等待执行</div>
+            <div id="status-subtitle" class="status-sub">点击左侧按钮开始运行</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span id="status-badge" class="badge">Idle</span>
+            <button id="stop" class="secondary">停止</button>
+          </div>
+        </section>
+        <section class="grid">
+          <div class="panel preview">
+            <div class="frame">
+              <img id="preview" alt="live preview" hidden />
+              <div id="placeholder" class="placeholder">暂无实时画面</div>
+            </div>
+            <div class="preview-meta">
+              <span id="preview-url">等待页面打开</span>
+              <span id="preview-time">-</span>
+            </div>
+          </div>
+          <div class="panel logs">
+            <div class="logs-head">运行日志</div>
+            <pre id="logs"></pre>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script>
+      const caseCardEl = document.getElementById('case-card');
+      const logsEl = document.getElementById('logs');
+      const previewEl = document.getElementById('preview');
+      const placeholderEl = document.getElementById('placeholder');
+      const previewUrlEl = document.getElementById('preview-url');
+      const previewTimeEl = document.getElementById('preview-time');
+      const statusTitleEl = document.getElementById('status-title');
+      const statusSubtitleEl = document.getElementById('status-subtitle');
+      const statusBadgeEl = document.getElementById('status-badge');
+      let previewObjectUrl = '';
+      let lastPreviewTimestamp = '';
+      let entry = null;
+
+      function renderCaseCard() {
+        if (!entry) {
+          caseCardEl.innerHTML = '<h2>未找到 marketing HSD 用例</h2>';
+          return;
+        }
+        caseCardEl.innerHTML = `
+          <h2>${entry.file.split('/').pop()}</h2>
+          <div class="meta">${entry.file}</div>
+          <div class="meta">${entry.suite}</div>
+          <div class="actions">
+            <button id="run-file">执行文件</button>
+            <a class="link-btn secondary" href="/all.html">全部测试</a>
+          </div>
+        `;
+        document.getElementById('run-file').addEventListener('click', async () => {
+          await fetch('/api/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              file: entry.file,
+              title: '',
+              e2eProject: 'marketing',
+              playwrightProject: 'chromium-iphone12',
+              enableMobile: true,
+              forceMobile: true,
+              baseURL: 'https://xydm-release.local.hzzxf.com',
+            }),
+          });
+          await refreshStatus();
+        });
+      }
+
+      async function refreshStatus() {
+        const res = await fetch('/api/status');
+        const status = await res.json();
+        statusTitleEl.textContent = status.current ? (status.current.title || status.current.file) : '等待执行';
+        statusSubtitleEl.textContent = status.command || '点击左侧按钮开始运行';
+        statusBadgeEl.textContent = status.running ? 'Running' : (status.exitCode === 0 ? 'Passed' : status.exitCode === null ? 'Idle' : 'Failed');
+        statusBadgeEl.style.background = status.running ? 'rgba(11,99,246,.1)' : status.exitCode === 0 ? 'rgba(15,157,122,.12)' : status.exitCode === null ? 'rgba(11,99,246,.1)' : 'rgba(219,58,52,.12)';
+        statusBadgeEl.style.color = status.running ? '#0b63f6' : status.exitCode === 0 ? '#0f9d7a' : status.exitCode === null ? '#0b63f6' : '#db3a34';
+        logsEl.textContent = (status.logs || []).join('');
+      }
+
+      async function refreshPreview() {
+        const metaRes = await fetch('/api/preview-meta');
+        const meta = await metaRes.json();
+        previewUrlEl.textContent = meta.url || '等待页面打开';
+        previewTimeEl.textContent = meta.updatedAt ? new Date(meta.updatedAt).toLocaleTimeString() : '-';
+        const stamp = meta.updatedAt || '';
+        if (stamp && stamp === lastPreviewTimestamp && previewObjectUrl) return;
+        const res = await fetch(`/api/preview?ts=${Date.now()}`);
+        if (res.status === 204) {
+          previewEl.hidden = true;
+          placeholderEl.hidden = false;
+          previewUrlEl.textContent = '等待页面打开';
+          previewTimeEl.textContent = '-';
+          return;
+        }
+        if (res.ok) {
+          const blob = await res.blob();
+          if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+          previewObjectUrl = URL.createObjectURL(blob);
+          previewEl.src = previewObjectUrl;
+          previewEl.hidden = false;
+          placeholderEl.hidden = true;
+          lastPreviewTimestamp = stamp;
+        }
+      }
+
+      document.getElementById('stop').addEventListener('click', async () => {
+        await fetch('/api/stop', { method: 'POST' });
+        await refreshStatus();
+      });
+
+      async function boot() {
+        const res = await fetch('/api/marketing-hsd');
+        entry = await res.json();
+        renderCaseCard();
+        await refreshStatus();
+        await refreshPreview();
+        setInterval(refreshStatus, 1000);
+        setInterval(refreshPreview, 1000);
+      }
+
+      boot();
+    </script>
+  </body>
+</html>

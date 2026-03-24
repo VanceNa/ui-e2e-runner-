@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>All E2E Tests</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: #eef3fb;
+        color: #172033;
+      }
+      .wrap {
+        padding: 24px;
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+      }
+      a {
+        color: #0b63f6;
+        text-decoration: none;
+        font-weight: 700;
+      }
+      .group {
+        background: white;
+        border: 1px solid rgba(25, 40, 70, 0.12);
+        border-radius: 18px;
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+      .case {
+        border-top: 1px solid rgba(25, 40, 70, 0.1);
+        padding: 12px 0;
+      }
+      .case:first-of-type { border-top: 0; }
+      .meta {
+        color: #64748b;
+        font-size: 13px;
+        margin-top: 4px;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 9px 12px;
+        background: #0b63f6;
+        color: white;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: white;
+        color: #0b63f6;
+        border: 1px solid rgba(11, 99, 246, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <h1>全部测试</h1>
+        <div style="display:flex; gap:12px;">
+          <a href="/">Onboarding 专页</a>
+          <a href="/marketing-hsd.html">营销端 iPhone12 专页</a>
+        </div>
+      </div>
+      <div id="list"></div>
+    </div>
+    <script>
+      function groupTests(items) {
+        const groups = new Map();
+        for (const item of items) {
+          const key = `${item.project.toUpperCase()} / ${item.scope.toUpperCase()}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(item);
+        }
+        return [...groups.entries()];
+      }
+
+      async function boot() {
+        const res = await fetch('/api/tests');
+        const tests = await res.json();
+        const groups = groupTests(tests);
+        const list = document.getElementById('list');
+        list.innerHTML = groups.map(([group, items]) => `
+          <div class="group">
+            <h3>${group}</h3>
+            ${items.map((item) => `
+              <div class="case">
+                <div><strong>${item.file.split('/').pop()}</strong></div>
+                <div class="meta">${item.file}</div>
+                <div class="meta">${item.suite}</div>
+                <div class="actions">
+                  <button data-file="${item.file}" data-title="">执行文件</button>
+                  ${(item.cases || []).map((entry) => `<button class="secondary" data-file="${item.file}" data-title="${entry.title}">${entry.title}</button>`).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `).join('');
+
+        list.querySelectorAll('button[data-file]').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            await fetch('/api/run', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                file: btn.dataset.file,
+                title: btn.dataset.title,
+              }),
+            });
+            location.href = '/';
+          });
+        });
+      }
+      boot();
+    </script>
+  </body>
+</html>

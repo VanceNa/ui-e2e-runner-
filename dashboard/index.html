@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>E2E Dashboard</title>
+    <style>
+      :root {
+        --bg: #eef3fb;
+        --panel: rgba(255, 255, 255, 0.94);
+        --line: rgba(25, 40, 70, 0.12);
+        --text: #172033;
+        --muted: #64748b;
+        --accent: #0b63f6;
+        --success: #0f9d7a;
+        --danger: #db3a34;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(11, 99, 246, 0.15), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(15, 157, 122, 0.12), transparent 24%),
+          var(--bg);
+      }
+      .wrap {
+        min-height: 100vh;
+        padding: 20px;
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 18px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: 0 18px 42px rgba(16, 24, 40, 0.08);
+      }
+      .sidebar {
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-height: 0;
+      }
+      h1 {
+        margin: 0;
+        font-size: 32px;
+      }
+      .desc {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .tree {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding-right: 4px;
+      }
+      .empty-state {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+        padding: 12px 4px;
+      }
+      .search-box input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+        background: white;
+      }
+      .node {
+        border: 1px solid transparent;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.68);
+        margin-bottom: 10px;
+      }
+      .node-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 12px 14px;
+        cursor: pointer;
+      }
+      .node-title {
+        font-weight: 800;
+      }
+      .node-subtitle {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+      .caret {
+        color: var(--muted);
+        font-weight: 800;
+      }
+      .node-body {
+        padding: 0 12px 12px;
+      }
+      .hidden { display: none; }
+      .scope {
+        border-top: 1px dashed rgba(25, 40, 70, 0.12);
+        padding-top: 10px;
+        margin-top: 10px;
+      }
+      .scope:first-child {
+        border-top: 0;
+        margin-top: 0;
+        padding-top: 0;
+      }
+      .scope-title {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--muted);
+        margin: 0 0 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .file-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 10px;
+        background: white;
+        margin-bottom: 8px;
+      }
+      .case-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .case-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 4px 2px;
+      }
+      .case-title {
+        font-weight: 700;
+        line-height: 1.5;
+        font-size: 13px;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 8px 12px;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      button.secondary {
+        background: white;
+        color: var(--accent);
+        border: 1px solid rgba(11, 99, 246, 0.2);
+      }
+      .main {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 16px;
+      }
+      .status {
+        padding: 18px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .status-title {
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .status-sub {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .badge {
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 800;
+        background: rgba(11, 99, 246, 0.1);
+        color: var(--accent);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 16px;
+        min-height: 0;
+      }
+      .preview {
+        padding: 14px;
+        min-height: 0;
+      }
+      .preview-shell {
+        height: calc(100% - 34px);
+        min-height: 520px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .frame {
+        width: 100%;
+        height: 100%;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: linear-gradient(180deg, #f7fafc, #e6edf8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .frame.mobile {
+        width: min(390px, 100%);
+        height: min(844px, 100%);
+        aspect-ratio: 390 / 844;
+        border-radius: 28px;
+        box-shadow: 0 12px 32px rgba(20, 31, 57, 0.12);
+      }
+      .frame img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .placeholder {
+        color: var(--muted);
+      }
+      .preview-meta {
+        margin-top: 10px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .logs {
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        min-height: 0;
+      }
+      .logs-head {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        font-weight: 700;
+      }
+      .report-bar {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .report-bar a {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(11, 99, 246, 0.2);
+        background: white;
+        color: var(--accent);
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      pre {
+        margin: 0;
+        padding: 16px;
+        overflow: auto;
+        background: #0f172a;
+        color: #d8e5ff;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      @media (max-width: 1180px) {
+        .wrap { grid-template-columns: 1fr; }
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel sidebar">
+        <div>
+          <h1>E2E Dashboard</h1>
+          <div class="desc">按项目分类浏览测试文件和用例。左侧为树形结构，支持展开/折叠；右侧查看日志和实时截图流。</div>
+        </div>
+        <div class="search-box">
+          <input id="search-input" placeholder="搜索项目、文件、用例" />
+        </div>
+        <div id="tree" class="tree"></div>
+      </aside>
+      <main class="main">
+        <section class="panel status">
+          <div>
+            <div id="status-title" class="status-title">等待执行</div>
+            <div id="status-subtitle" class="status-sub">点击左侧树中的文件或 case 开始运行</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span id="status-badge" class="badge">Idle</span>
+            <button id="stop" class="secondary">停止</button>
+          </div>
+        </section>
+        <section class="grid">
+          <div class="panel preview">
+            <div class="preview-shell">
+              <div id="preview-frame" class="frame">
+                <img id="preview" alt="live preview" hidden />
+                <div id="placeholder" class="placeholder">暂无实时画面</div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span id="preview-url">等待页面打开</span>
+              <span id="preview-time">-</span>
+            </div>
+          </div>
+          <div class="panel logs">
+            <div class="logs-head">运行日志</div>
+            <div id="report-bar" class="report-bar"></div>
+            <pre id="logs"></pre>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const treeEl = document.getElementById('tree');
+      const logsEl = document.getElementById('logs');
+      const searchInputEl = document.getElementById('search-input');
+      const previewEl = document.getElementById('preview');
+      const reportBarEl = document.getElementById('report-bar');
+      const previewFrameEl = document.getElementById('preview-frame');
+      const placeholderEl = document.getElementById('placeholder');
+      const previewUrlEl = document.getElementById('preview-url');
+      const previewTimeEl = document.getElementById('preview-time');
+      const statusTitleEl = document.getElementById('status-title');
+      const statusSubtitleEl = document.getElementById('status-subtitle');
+      const statusBadgeEl = document.getElementById('status-badge');
+      let previewObjectUrl = '';
+      let lastPreviewTimestamp = '';
+
+      function runtimeForProject(project) {
+        if (project === 'marketing') {
+          return {
+            e2eProject: 'marketing',
+            playwrightProject: 'chromium-iphone12',
+            enableMobile: true,
+            forceMobile: true,
+            baseURL: 'https://xydm-release.local.hzzxf.com',
+          };
+        }
+        if (project === 'member') {
+          return {
+            e2eProject: 'member',
+            playwrightProject: 'chromium-mobile',
+            enableMobile: true,
+            forceMobile: true,
+          };
+        }
+        return {
+          e2eProject: 'admin',
+          playwrightProject: 'chromium-desktop',
+          baseURL: 'https://xydb-release.local.hzzxf.com',
+          apiBaseURL: 'https://xydb-release.local.hzzxf.com/api',
+        };
+      }
+
+      let allTests = [];
+
+      function groupByProject(tests) {
+        const groups = new Map();
+        for (const item of tests) {
+          const key = item.project;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(item);
+        }
+        return [...groups.entries()];
+      }
+
+      function groupByScope(items) {
+        const groups = new Map();
+        for (const item of items) {
+          const key = item.scope;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(item);
+        }
+        return [...groups.entries()];
+      }
+
+      function expandCases(items) {
+        return items.flatMap((item) =>
+          (item.cases || []).map((entry) => ({
+            file: item.file,
+            project: item.project,
+            scope: item.scope,
+            suite: item.suite,
+            title: entry.title,
+          }))
+        );
+      }
+
+      async function runCase(file, title, project) {
+        await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file,
+            title,
+            ...runtimeForProject(project),
+          }),
+        });
+        await refreshStatus();
+      }
+
+      function filterTests(tests, keyword) {
+        const q = keyword.trim().toLowerCase();
+        if (!q) return tests;
+        return tests
+          .map((item) => ({
+            ...item,
+            cases: (item.cases || []).filter((entry) =>
+              `${item.project} ${item.file} ${item.suite} ${entry.title}`.toLowerCase().includes(q)
+            ),
+          }))
+          .filter((item) =>
+            item.cases.length > 0 ||
+            `${item.project} ${item.file} ${item.suite}`.toLowerCase().includes(q)
+          );
+      }
+
+      function renderTree(tests) {
+        const projects = groupByProject(tests);
+        if (projects.length === 0) {
+          treeEl.innerHTML = '<div class="empty-state">当前没有可显示的测试树。请检查 dashboard 是否已重启，或接口 `/api/tests` 是否返回数据。</div>';
+          return;
+        }
+        treeEl.innerHTML = projects.map(([project, items], projectIndex) => `
+          <div class="node">
+            <div class="node-header" data-target="project-${project}">
+              <div>
+                <div class="node-title">${project.toUpperCase()}</div>
+                <div class="node-subtitle">${items.length} 个测试文件</div>
+              </div>
+              <div class="caret">${projectIndex === 0 ? '−' : '+'}</div>
+            </div>
+            <div id="project-${project}" class="node-body ${projectIndex === 0 ? '' : 'hidden'}">
+              ${groupByScope(items).map(([scope, groupItems]) => `
+                <div class="scope">
+                  <div class="scope-title">${scope.toUpperCase()}</div>
+                  ${expandCases(groupItems).map((entry) => `
+                    <div class="file-card">
+                      <div class="case-list">
+                        <div class="case-item">
+                          <div class="case-title">${entry.title}</div>
+                          <div class="actions">
+                            <button class="secondary" data-file="${entry.file}" data-title="${entry.title}" data-project="${entry.project}">执行用例</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+
+        treeEl.querySelectorAll('.node-header').forEach((header) => {
+          header.addEventListener('click', () => {
+            const targetId = header.dataset.target;
+            const body = document.getElementById(targetId);
+            const caret = header.querySelector('.caret');
+            const hidden = body.classList.toggle('hidden');
+            caret.textContent = hidden ? '+' : '−';
+          });
+        });
+
+        treeEl.querySelectorAll('button[data-file]').forEach((button) => {
+          button.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            await runCase(button.dataset.file, button.dataset.title, button.dataset.project);
+          });
+        });
+      }
+
+      function rerenderTree() {
+        renderTree(filterTests(allTests, searchInputEl.value));
+      }
+
+      async function refreshStatus() {
+        const res = await fetch('/api/status');
+        const status = await res.json();
+        statusTitleEl.textContent = status.current ? (status.current.title || status.current.file) : '等待执行';
+        statusSubtitleEl.textContent = status.command || '点击左侧树中的文件或 case 开始运行';
+        const isMobile = ['chromium-mobile', 'chromium-iphone12'].includes(status.current?.playwrightProject || '');
+        previewFrameEl.classList.toggle('mobile', isMobile);
+        statusBadgeEl.textContent = status.running ? 'Running' : (status.exitCode === 0 ? 'Passed' : status.exitCode === null ? 'Idle' : 'Failed');
+        statusBadgeEl.style.background = status.running
+          ? 'rgba(11, 99, 246, 0.1)'
+          : status.exitCode === 0
+            ? 'rgba(15, 157, 122, 0.12)'
+            : status.exitCode === null
+              ? 'rgba(11, 99, 246, 0.1)'
+              : 'rgba(219, 58, 52, 0.12)';
+        statusBadgeEl.style.color = status.running
+          ? '#0b63f6'
+          : status.exitCode === 0
+            ? '#0f9d7a'
+            : status.exitCode === null
+              ? '#0b63f6'
+              : '#db3a34';
+        logsEl.textContent = (status.logs || []).join('');
+      }
+
+      async function refreshPreview() {
+        const metaRes = await fetch('/api/preview-meta');
+        const meta = await metaRes.json();
+        previewUrlEl.textContent = meta.url || '等待页面打开';
+        previewTimeEl.textContent = meta.updatedAt ? new Date(meta.updatedAt).toLocaleTimeString() : '-';
+        const stamp = meta.updatedAt || '';
+        if (stamp && stamp === lastPreviewTimestamp && previewObjectUrl) return;
+        const res = await fetch(`/api/preview?ts=${Date.now()}`);
+        if (res.status === 204) {
+          previewEl.hidden = true;
+          placeholderEl.hidden = false;
+          previewUrlEl.textContent = '等待页面打开';
+          previewTimeEl.textContent = '-';
+          return;
+        }
+        if (res.ok) {
+          const blob = await res.blob();
+          if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+          previewObjectUrl = URL.createObjectURL(blob);
+          previewEl.src = previewObjectUrl;
+          previewEl.hidden = false;
+          placeholderEl.hidden = true;
+          lastPreviewTimestamp = stamp;
+        }
+      }
+
+      async function refreshArtifacts() {
+        const res = await fetch('/api/artifacts');
+        const data = await res.json();
+        const links = [];
+        if (data.htmlReport) links.push(`<a href="${data.htmlReport}" target="_blank">打开 HTML 报告</a>`);
+        if (data.latestScreenshot) links.push(`<a href="${data.latestScreenshot}" target="_blank" download>下载截图</a>`);
+        if (data.latestVideo) links.push(`<a href="${data.latestVideo}" target="_blank" download>下载视频</a>`);
+        if (data.latestErrorContext) links.push(`<a href="${data.latestErrorContext}" target="_blank" download>下载错误上下文</a>`);
+        reportBarEl.innerHTML = links.length > 0 ? links.join('') : '<span class="placeholder">暂无报告文件</span>';
+      }
+
+      document.getElementById('stop').addEventListener('click', async () => {
+        await fetch('/api/stop', { method: 'POST' });
+        await refreshStatus();
+      });
+
+      async function boot() {
+        try {
+          const res = await fetch('/api/tests');
+          if (!res.ok) {
+            throw new Error(`/api/tests 返回 ${res.status}`);
+          }
+          allTests = await res.json();
+          rerenderTree();
+          await refreshStatus();
+          await refreshPreview();
+          await refreshArtifacts();
+          setInterval(refreshStatus, 1000);
+          setInterval(refreshPreview, 1000);
+          setInterval(refreshArtifacts, 3000);
+        } catch (error) {
+          treeEl.innerHTML = `<div class="empty-state">加载测试树失败：${error instanceof Error ? error.message : String(error)}<br />请重启 <code>npm run dashboard</code> 后刷新页面。</div>`;
+        }
+      }
+
+      searchInputEl.addEventListener('input', () => {
+        rerenderTree();
+      });
+
+      boot();
+    </script>
+  </body>
+</html>

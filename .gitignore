@@ -16,12 +16,14 @@ dist/
 playwright-report/
 test-results/
 blob-report/
+.live-preview/
 
 # 日志文件
 *.log
 
 # 本地配置文件
 *.local
+.env.e2e
 
 # 缓存文件
 *.cache
