@@ -8,7 +8,7 @@ const BASIC_CLIENT = 'Basic bWVtYmVyOm1lbWJlcg==';
 export const memberAdapter: ProjectAdapter = {
   projectId: 'member',
   description: '心易贷移动用户端',
-  baseUrl: 'https://xydc-dev.local.hzzxf.com',
+  baseUrl: 'https://xydc-release.local.hzzxf.com',
   apiBaseUrl: 'https://xydb-dev.local.hzzxf.com/api',
   loginMode: 'sms',
   clientToc: 'Y',

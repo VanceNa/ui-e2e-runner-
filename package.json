@@ -21,6 +21,7 @@
     "onboarding:observe": "npm run test:ui:admin:onboarding:release:observe",
     "onboarding:ui": "npm run test:ui:admin:onboarding:release:ui",
     "test:ui:member": "cross-env E2E_PROJECT=member playwright test",
+    "test:ui:member:login": "cross-env E2E_PROJECT=member E2E_ENABLE_MOBILE=1 E2E_FORCE_MOBILE=1 E2E_BASE_URL=https://xydc-release.local.hzzxf.com playwright test tests/integration/member.login.spec.ts --project=chromium-mobile --headed --workers=1 --reporter=list",
     "test:ui:marketing": "cross-env E2E_PROJECT=marketing playwright test",
     "test:ui:marketing:login": "cross-env E2E_PROJECT=marketing E2E_ENABLE_MOBILE=1 playwright test tests/integration/marketing.hsd-product.forms.spec.ts -g \"登录页校验与密码登录接口\" --project=chromium-mobile",
     "test:ui:marketing:hsd-priority": "cross-env E2E_PROJECT=marketing E2E_ENABLE_MOBILE=1 playwright test tests/integration/marketing.hsd-product.forms.spec.ts -g \"合同开立|线下面签|资料上传\" --project=chromium-mobile",

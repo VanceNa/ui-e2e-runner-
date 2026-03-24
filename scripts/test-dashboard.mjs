@@ -175,6 +175,7 @@ async function startRun(payload) {
     E2E_FORCE_MOBILE: payload.forceMobile ? '1' : process.env.E2E_FORCE_MOBILE,
     E2E_BASE_URL: payload.baseURL || process.env.E2E_BASE_URL || 'https://xydb-release.local.hzzxf.com',
     E2E_API_BASE_URL: payload.apiBaseURL || process.env.E2E_API_BASE_URL || 'https://xydb-release.local.hzzxf.com/api',
+    E2E_LOGIN_PHONE: payload.loginPhone || process.env.E2E_LOGIN_PHONE,
     E2E_LIVE_PREVIEW_DIR: previewDir,
   };
 

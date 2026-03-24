@@ -1,6 +1,6 @@
 import { loginByPassword } from '../../src/api/auth.js';
 import { expect, test } from '../../src/fixtures/admin-auth.fixture.js';
-import { bindLivePreview } from '../../src/live-preview.js';
+import { bindLivePreview, captureLivePreview, clearLivePreviewOwner, setLivePreviewOwner } from '../../src/live-preview.js';
 
 function uniqueId() {
   const now = new Date();
@@ -370,6 +370,7 @@ test.describe('Admin Onboarding E2E', () => {
       });
 
       // 纯 UI 校验：使用全新浏览器上下文登录新账号，避免旧 admin 会话污染。
+      setLivePreviewOwner('verify-page');
       const verifyContext = await browser.newContext({ ignoreHTTPSErrors: true });
       const verifyPage = await verifyContext.newPage();
       const stopVerifyPreview = bindLivePreview(verifyPage, 'verify-page');
@@ -397,12 +398,14 @@ test.describe('Admin Onboarding E2E', () => {
         }
         await expect(verifyPage.locator('body')).not.toContainText('登录');
         await expect(verifyPage.getByText(displayName).first()).toBeVisible({ timeout: 20_000 });
+        await captureLivePreview(verifyPage, 'verify-page-final');
       } finally {
         stopVerifyPreview();
         if (process.env.E2E_PAUSE_ON_END === '1') {
           await verifyPage.pause();
         }
         await verifyContext.close();
+        clearLivePreviewOwner('verify-page');
       }
 
     },

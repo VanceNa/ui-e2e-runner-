@@ -6,6 +6,7 @@ const LIVE_PREVIEW_DIR = process.env.E2E_LIVE_PREVIEW_DIR || '';
 const SCREENSHOT_PATH = LIVE_PREVIEW_DIR ? join(LIVE_PREVIEW_DIR, 'live.png') : '';
 const META_PATH = LIVE_PREVIEW_DIR ? join(LIVE_PREVIEW_DIR, 'meta.json') : '';
 const STATUS_PATH = LIVE_PREVIEW_DIR ? join(LIVE_PREVIEW_DIR, 'status.json') : '';
+let activePreviewOwner = '';
 
 function isEnabled() {
   return Boolean(LIVE_PREVIEW_DIR);
@@ -31,6 +32,37 @@ export async function writeLiveStatus(data: Record<string, unknown>) {
   });
 }
 
+export function setLivePreviewOwner(label: string) {
+  activePreviewOwner = label;
+}
+
+export function clearLivePreviewOwner(label?: string) {
+  if (!label || activePreviewOwner === label) {
+    activePreviewOwner = '';
+  }
+}
+
+export async function captureLivePreview(page: Page, label = 'page') {
+  if (!isEnabled() || page.isClosed()) {
+    return;
+  }
+  if (activePreviewOwner && activePreviewOwner !== label) {
+    return;
+  }
+
+  try {
+    await ensureDir();
+    await page.screenshot({ path: SCREENSHOT_PATH });
+    await writeJson(META_PATH, {
+      label,
+      updatedAt: new Date().toISOString(),
+      url: page.url(),
+    });
+  } catch {
+    // Ignore transient screenshot failures during navigation/close.
+  }
+}
+
 export function bindLivePreview(page: Page, label = 'page') {
   if (!isEnabled()) {
     return () => {};
@@ -43,15 +75,12 @@ export function bindLivePreview(page: Page, label = 'page') {
     if (stopped || capturing || page.isClosed()) {
       return;
     }
+    if (activePreviewOwner && activePreviewOwner !== label) {
+      return;
+    }
     capturing = true;
     try {
-      await ensureDir();
-      await page.screenshot({ path: SCREENSHOT_PATH });
-      await writeJson(META_PATH, {
-        label,
-        updatedAt: new Date().toISOString(),
-        url: page.url(),
-      });
+      await captureLivePreview(page, label);
     } catch {
       // Ignore transient screenshot failures during navigation/close.
     } finally {
@@ -61,7 +90,7 @@ export function bindLivePreview(page: Page, label = 'page') {
 
   const interval = setInterval(() => {
     void capture();
-  }, 700);
+  }, 250);
 
   page.on('load', () => {
     void capture();
