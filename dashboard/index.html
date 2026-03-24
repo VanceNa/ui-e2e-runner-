@@ -18,6 +18,8 @@
       * { box-sizing: border-box; }
       body {
         margin: 0;
+        height: 100vh;
+        overflow: hidden;
         font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
         color: var(--text);
         background:
@@ -26,7 +28,7 @@
           var(--bg);
       }
       .wrap {
-        min-height: 100vh;
+        height: 100vh;
         padding: 20px;
         display: grid;
         grid-template-columns: 380px 1fr;
@@ -39,11 +41,13 @@
         box-shadow: 0 18px 42px rgba(16, 24, 40, 0.08);
       }
       .sidebar {
+        height: calc(100vh - 40px);
         padding: 18px;
         display: flex;
         flex-direction: column;
         gap: 14px;
         min-height: 0;
+        overflow: hidden;
       }
       h1 {
         margin: 0;
@@ -88,6 +92,11 @@
         gap: 8px;
         padding: 12px 14px;
         cursor: pointer;
+      }
+      .node-header-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
       .node-title {
         font-weight: 800;
@@ -162,15 +171,25 @@
         font-weight: 700;
         white-space: nowrap;
       }
+      button.ghost {
+        background: white;
+        color: var(--accent);
+        border: 1px solid rgba(11, 99, 246, 0.2);
+        padding: 7px 10px;
+        font-size: 12px;
+      }
       button.secondary {
         background: white;
         color: var(--accent);
         border: 1px solid rgba(11, 99, 246, 0.2);
       }
       .main {
+        height: calc(100vh - 40px);
         display: grid;
         grid-template-rows: auto 1fr;
         gap: 16px;
+        min-height: 0;
+        overflow: hidden;
       }
       .status {
         padding: 18px 20px;
@@ -424,6 +443,18 @@
         await refreshStatus();
       }
 
+      async function runProject(project) {
+        await fetch('/api/run-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project,
+            ...runtimeForProject(project),
+          }),
+        });
+        await refreshStatus();
+      }
+
       function filterTests(tests, keyword) {
         const q = keyword.trim().toLowerCase();
         if (!q) return tests;
@@ -453,7 +484,10 @@
                 <div class="node-title">${project.toUpperCase()}</div>
                 <div class="node-subtitle">${items.length} 个测试文件</div>
               </div>
-              <div class="caret">${projectIndex === 0 ? '−' : '+'}</div>
+              <div class="node-header-right">
+                <button class="ghost" data-run-project="${project}">执行全部</button>
+                <div class="caret">${projectIndex === 0 ? '−' : '+'}</div>
+              </div>
             </div>
             <div id="project-${project}" class="node-body ${projectIndex === 0 ? '' : 'hidden'}">
               ${groupByScope(items).map(([scope, groupItems]) => `
@@ -478,12 +512,22 @@
         `).join('');
 
         treeEl.querySelectorAll('.node-header').forEach((header) => {
-          header.addEventListener('click', () => {
+          header.addEventListener('click', (event) => {
+            if (event?.target instanceof HTMLElement && event.target.closest('button[data-run-project]')) {
+              return;
+            }
             const targetId = header.dataset.target;
             const body = document.getElementById(targetId);
             const caret = header.querySelector('.caret');
             const hidden = body.classList.toggle('hidden');
             caret.textContent = hidden ? '+' : '−';
+          });
+        });
+
+        treeEl.querySelectorAll('button[data-run-project]').forEach((button) => {
+          button.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            await runProject(button.dataset.runProject);
           });
         });
 

@@ -163,7 +163,15 @@ async function startRun(payload) {
   const file = payload.file;
   const title = payload.title || '';
   const playwrightProject = payload.playwrightProject || 'chromium-desktop';
-  const args = ['playwright', 'test', file, '--project', playwrightProject, '--workers=1'];
+  const args = ['playwright', 'test'];
+  if (file) {
+    args.push(file);
+  } else if (payload.files?.length) {
+    args.push(...payload.files);
+  } else {
+    throw new Error('未提供可执行的测试文件');
+  }
+  args.push('--project', playwrightProject, '--workers=1');
   if (title) {
     args.push('-g', escapeRegex(title));
   }
@@ -243,6 +251,33 @@ async function handle(req, res) {
       try {
         const payload = JSON.parse(body || '{}');
         await startRun(payload);
+        sendJson(res, { ok: true });
+      } catch (error) {
+        sendJson(res, { ok: false, message: error instanceof Error ? error.message : String(error) }, 400);
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/run-project') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const tests = await listTests();
+        const files = tests.filter((item) => item.project === payload.project).map((item) => item.file);
+        if (files.length === 0) {
+          throw new Error(`项目 ${payload.project} 下没有可执行测试文件`);
+        }
+        await startRun({
+          ...payload,
+          file: '',
+          files,
+          title: '',
+        });
         sendJson(res, { ok: true });
       } catch (error) {
         sendJson(res, { ok: false, message: error instanceof Error ? error.message : String(error) }, 400);
