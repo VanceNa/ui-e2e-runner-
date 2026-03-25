@@ -135,22 +135,21 @@ npm run dashboard
 
 ### 3.2 Playwright UI 画面为什么不会实时变动
 
-Playwright UI 右侧默认看到的不是“实时浏览器画面”，而是当前步骤对应的 action snapshot（步骤快照）。
+结论：
 
-- `Action / Before / After` 面板展示的是某一步执行前后捕获的静态页面状态，不会像远程桌面一样连续刷新
-- 当你点击不同步骤时，右侧画面会切换到该步骤对应的快照，所以看起来像“能切图”，但不是实时直播
-- 这个视图适合定位某一步点击前后页面长什么样，不适合拿来观察整个流程连续运行
+- Playwright UI 右侧的 `Action / Before / After` 是步骤快照，不是实时浏览器画面
+- 点击不同步骤时，右侧只会切换到该步骤对应的静态页面状态
 
-如果你想看真实页面实时变化，使用有头模式：
+想看实时画面，使用：
 
 - `npm run onboarding:observe`
 - `npm run test:ui:admin:onboarding:headed`
 - `npm run dashboard`
 
-建议：
+使用建议：
 
-1. 用 `Playwright UI` 做单条 case 的点击执行、步骤排查、trace 对照。
-2. 用 `:headed` / `:observe` 看真实浏览器如何连续变化。
+1. 用 `Playwright UI` 做单条 case 执行、步骤排查、trace 对照。
+2. 用 `:headed` / `:observe` 看浏览器真实连续变化。
 
 ## 4. 环境变量
 
