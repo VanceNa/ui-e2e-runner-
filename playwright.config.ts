@@ -17,6 +17,20 @@ const enableMobile = process.env.E2E_ENABLE_MOBILE === "1";
 const strictMobile = process.env.E2E_MOBILE_STRICT === "1";
 const forceMobile = process.env.E2E_FORCE_MOBILE === "1";
 const slowMoMs = Number(process.env.E2E_SLOWMO_MS || 0);
+const traceMode = (() => {
+  const mode = process.env.E2E_TRACE_MODE;
+  if (
+    mode === "off" ||
+    mode === "on" ||
+    mode === "retain-on-failure" ||
+    mode === "on-first-retry" ||
+    mode === "on-all-retries" ||
+    mode === "retain-on-first-failure"
+  ) {
+    return mode;
+  }
+  return "retain-on-failure";
+})();
 
 async function canRunMobileProject(): Promise<boolean> {
   let browser: Browser | undefined;
@@ -85,7 +99,7 @@ export default defineConfig({
   },
   use: {
     baseURL: process.env.E2E_BASE_URL || target.baseUrl,
-    trace: "on-first-retry",
+    trace: traceMode,
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     actionTimeout: 10_000,

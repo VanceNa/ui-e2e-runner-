@@ -4,6 +4,7 @@ import { createReadStream, existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { once } from 'node:events';
 import { config as loadEnv } from 'dotenv';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -342,10 +343,35 @@ async function handle(req, res) {
   res.end('Not found');
 }
 
-const port = Number(process.env.E2E_DASHBOARD_PORT || 4318);
+const defaultPort = Number(process.env.E2E_DASHBOARD_PORT || 4328);
 const host = process.env.E2E_DASHBOARD_HOST || '127.0.0.1';
-createServer((req, res) => {
-  void handle(req, res);
-}).listen(port, host, () => {
-  console.log(`dashboard: http://${host}:${port}`);
-});
+
+async function listenWithFallback() {
+  for (let offset = 0; offset < 10; offset += 1) {
+    const port = defaultPort + offset;
+    const server = createServer((req, res) => {
+      void handle(req, res);
+    });
+
+    server.listen(port, host);
+    const [eventName, error] = await Promise.race([
+      once(server, 'listening').then(() => ['listening', null]),
+      once(server, 'error').then(([err]) => ['error', err]),
+    ]);
+
+    if (eventName === 'listening') {
+      const suffix = offset === 0 ? '' : ` (${defaultPort} 已占用，自动切换)`;
+      console.log(`dashboard: http://${host}:${port}${suffix}`);
+      return;
+    }
+
+    server.close();
+    if (!error || error.code !== 'EADDRINUSE') {
+      throw error;
+    }
+  }
+
+  throw new Error(`dashboard 启动失败：${host}:${defaultPort}-${defaultPort + 9} 均已被占用`);
+}
+
+void listenWithFallback();

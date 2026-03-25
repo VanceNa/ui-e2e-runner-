@@ -9,6 +9,7 @@ nvm use 20.19.0
 npm install
 npm run test:ui:install
 npm run test:ui
+npx playwright test --ui
 ```
 
 ## 2. 目录（当前实现）
@@ -132,6 +133,25 @@ npm run dashboard
 2. 打开 trace/video，对失败步骤前后 DOM 和网络请求做对照。
 3. 把“固定等待”改为“状态等待”（元素可见、可点击、接口返回、路由完成）。
 
+### 3.2 Playwright UI 画面为什么不会实时变动
+
+Playwright UI 右侧默认看到的不是“实时浏览器画面”，而是当前步骤对应的 action snapshot（步骤快照）。
+
+- `Action / Before / After` 面板展示的是某一步执行前后捕获的静态页面状态，不会像远程桌面一样连续刷新
+- 当你点击不同步骤时，右侧画面会切换到该步骤对应的快照，所以看起来像“能切图”，但不是实时直播
+- 这个视图适合定位某一步点击前后页面长什么样，不适合拿来观察整个流程连续运行
+
+如果你想看真实页面实时变化，使用有头模式：
+
+- `npm run onboarding:observe`
+- `npm run test:ui:admin:onboarding:headed`
+- `npm run dashboard`
+
+建议：
+
+1. 用 `Playwright UI` 做单条 case 的点击执行、步骤排查、trace 对照。
+2. 用 `:headed` / `:observe` 看真实浏览器如何连续变化。
+
 ## 4. 环境变量
 
 推荐使用配置文件，避免每次命令行手动拼接：
@@ -161,7 +181,8 @@ npm run dashboard
 
 默认地址：
 
-- `http://127.0.0.1:4318`
+- `http://127.0.0.1:4328`
+- 如果 `4328` 被占用，dashboard 会自动尝试 `4329` 到 `4337`
 
 优先级（高 -> 低）：
 
@@ -171,11 +192,14 @@ npm run dashboard
 
 - `E2E_PROJECT`：`admin` | `member` | `marketing`，默认 `admin`
 - `E2E_BASE_URL`：覆盖 UI 地址（用于业务首页冒烟）
-- `E2E_API_BASE_URL`：覆盖 API 地址（用于业务 API 冒烟）
+- `E2E_API_BASE_URL`：覆盖 API 地址（用于 API 冒烟）
+- `E2E_API_SMOKE_PATH`：API health smoke 路径，例如 `/health`、`/actuator/health`
+- `E2E_API_SMOKE_METHOD`：API health smoke 请求方法，默认 `GET`
 - `E2E_OAUTH2_CLIENT`：管理端登录 client（`Authorization: Basic ...`）
 - `E2E_TENANT_ID`：管理端租户头
 - `E2E_ENABLE_MOBILE=1`：启用 `chromium-mobile` 项目
 - `E2E_MOBILE_STRICT=1`：移动端预检失败时不降级，直接失败
+- `E2E_TRACE_MODE`：覆盖 Playwright trace 策略，支持 `off` / `on` / `retain-on-failure` / `on-first-retry` / `on-all-retries` / `retain-on-first-failure`
 - `E2E_LOGIN_USERNAME`：联动用例登录账号
 - `E2E_LOGIN_PASSWORD`：联动用例登录密码
 - `E2E_AUTH_TOKEN_URL`：可选，直接指定 token 接口完整 URL
@@ -206,7 +230,7 @@ npm run dashboard
   - adapter 项目注解打印
   - 业务首页可访问检查（需设置 `E2E_BASE_URL`）
 - API Smoke
-  - `/admin/secret/systemTime` 可访问检查（需设置 `E2E_API_BASE_URL`）
+  - 显式配置的 health endpoint 可访问检查（需设置 `E2E_API_SMOKE_PATH`）
 - Admin Integration
   - `API登录 -> 注入会话 -> 首页断言 -> API状态校验`（需配置 admin 凭据和 client）
   - `Arrange(API) -> Act(UI) -> Assert(API)` 可配置模板（可快速复制成具体业务用例）

@@ -56,8 +56,20 @@ export const adminAdapter: ProjectAdapter = {
       payload,
     );
 
-    // For current document (hash navigation won't trigger addInitScript).
-    await page.evaluate(writeSession, payload);
+    // For current document (hash navigation won't trigger addInitScript), but
+    // Playwright UI may still be sitting on about:blank where sessionStorage
+    // is not accessible.
+    const url = page.url();
+    if (!url || url === 'about:blank') {
+      return;
+    }
+    await page.evaluate(writeSession, payload).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/sessionStorage|Access is denied|SecurityError/i.test(message)) {
+        return;
+      }
+      throw error;
+    });
   },
   async homeReadyCheck(page: Page): Promise<void> {
     await expect(page.locator('body')).toBeVisible();

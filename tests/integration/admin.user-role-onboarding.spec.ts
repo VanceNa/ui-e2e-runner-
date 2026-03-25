@@ -113,8 +113,11 @@ async function fetchAdminSecrets(request: any, apiBaseURL: string, token: string
 }
 
 async function createRole(page: any, roleName: string, roleCode: string) {
-  await page.getByRole('button', { name: '新增' }).first().click();
-  const dialog = page.locator('.el-dialog').last();
+  const createButton = page.getByRole('button', { name: '新增' }).filter({ visible: true }).first();
+  await expect(createButton).toBeVisible({ timeout: 20_000 });
+  await expect(createButton).toBeEnabled({ timeout: 20_000 });
+  await createButton.click();
+  const dialog = page.locator('.el-dialog:visible').last();
   await expect(dialog).toBeVisible({ timeout: 15_000 });
   await expect(dialog.getByText('新增', { exact: true })).toBeVisible();
 
