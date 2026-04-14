@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ui-audit-runner"
+version = "0.2.0"
+description = "基于 Python 脚本的 UI 自动化审计工具"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+browser = ["playwright>=1.48,<2"]
+
+[project.scripts]
+ui-audit = "ui_audit_runner.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ui_audit_runner*"]

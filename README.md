@@ -1,290 +1,152 @@
-# ui-e2e-runner
+# ui-audit-runner
 
-前端 UI + 接口自动化测试通用 Runner，基于 Playwright Test，采用「公共内核 + 项目 Adapter」结构，兼容 Playwright Test for VSCode。
+面向 UI 自动化测试的 Python 审计工具骨架，重点覆盖以下五类检查：
 
-## 1. 快速开始
+- 布局与排版测试
+- 视觉一致性测试
+- 控件功能测试
+- 内容准确性测试
+- 导航与交互测试
+
+这次重构已经移除了原仓库里和 `admin/member/marketing` 强绑定的 TypeScript 适配器、联动样例、dashboard 以及多余 Node 配置，项目现在收敛为一个更容易二次开发的 Python 脚本型工具。
+
+## 安装
+
+需要 Python `3.8+`。
 
 ```bash
-nvm use 20.19.0
-npm install
-npm run test:ui:install
-npm run test:ui
-npx playwright test --ui
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[browser]'
+python -m playwright install chromium
 ```
 
-## 2. 目录（当前实现）
+在 `zsh` 里，`.[browser]` 需要加引号，否则会被当成通配符处理并报 `no matches found`。
+
+## 运行
+
+执行内置示例：
+
+```bash
+python -m ui_audit_runner run examples/sample_audit.py --output reports/sample-report.json
+```
+
+如果你新开了一个终端，还没有重新执行 `source .venv/bin/activate`，也可以直接使用虚拟环境里的 Python：
+
+```bash
+.venv/bin/python -m ui_audit_runner run examples/sample_audit.py --output reports/sample-report.json
+```
+
+也可以安装后直接使用命令：
+
+```bash
+ui-audit run examples/sample_audit.py --output reports/sample-report.json
+```
+
+## Python 脚本入口
+
+审计脚本只需要暴露以下任一入口：
+
+- `SPEC`
+- `build_spec()`
+
+示例：
+
+```python
+from ui_audit_runner import (
+    AuditSpec,
+    Viewport,
+    spacing_consistency,
+    responsive_layout,
+)
+
+SPEC = AuditSpec(
+    name="示例页面审计",
+    url="https://example.com",
+    viewports=[
+        Viewport("desktop", 1440, 900),
+        Viewport("mobile", 390, 844),
+    ],
+    checks=[
+        spacing_consistency(".form-row"),
+        responsive_layout(required_selectors=["main", ".primary-action"]),
+    ],
+)
+```
+
+## 内置检查能力
+
+### 1. 布局与排版
+
+- `spacing_consistency`
+  - 检查连续元素间距是否稳定
+- `responsive_layout`
+  - 检查不同分辨率下是否出现横向溢出、关键元素是否丢失
+- `window_alignment`
+  - 检查主窗体是否居中、子窗体是否位于左上角或正中
+
+### 2. 视觉一致性
+
+- `typography_consistency`
+  - 检查字体、字号、文字颜色是否统一
+- `button_style_consistency`
+  - 检查按钮外观是否一致
+- `icon_consistency`
+  - 检查图标尺寸与颜色风格是否稳定
+- `contrast_ratio`
+  - 检查前景与背景对比度，并提示可能过于刺眼的颜色组合
+
+### 3. 控件功能
+
+- `button_click`
+- `textbox_input`
+- `select_option`
+- `radio_select`
+- `checkbox_toggle`
+- `tab_order`
+- `enter_triggers_default_button`
+- `keyboard_shortcuts`
+
+### 4. 内容准确性
+
+- `text_quality`
+  - 检查乱码、异常字符、可疑编码问题
+- `terminology_guard`
+  - 检查术语是否符合预期
+- `message_clarity`
+  - 检查提示/警告/错误文案是否清晰
+- `table_integrity`
+  - 检查表格列头、行数据完整性，以及滚动/分页能力
+
+### 5. 导航与交互
+
+- `navigation_flow`
+  - 检查跳转与返回逻辑
+- `menu_depth`
+  - 检查导航层级是否超过三层
+- `step_flow_status`
+  - 检查多步骤流程是否展示当前状态与操作限制
+
+## 项目结构
 
 ```text
-src/
-  adapters/
-    types.ts
-    marketing.adapter.ts
-    member.adapter.ts
-    admin.adapter.ts
-    index.ts
-  fixtures/
-    test.fixture.ts
-    admin-auth.fixture.ts
+ui_audit_runner/
+  __init__.py
+  __main__.py
+  checks.py
+  cli.py
+  models.py
+  runtime.py
+examples/
+  demo_app.html
+  sample_audit.py
 tests/
-  smoke.ui.spec.ts
-  smoke.api.spec.ts
+  test_models.py
+  test_sample_audit.py
 ```
 
-说明：
-
-- `adapters`：收敛项目差异（base/api 地址、CLIENT-TOC、登录模式、首页就绪检查）
-- `fixtures`：向用例注入统一 `adapter`
-- `admin-auth.fixture`：封装 admin 的 API 登录与会话注入，给联动场景复用
-- `tests`：测试仅依赖 adapter 接口，不直接耦合单一项目细节
-
-## 3. 运行命令
-
-```bash
-# 默认入口
-npm run test:ui
-
-# 指定项目
-npm run test:ui:admin
-npm run test:ui:member
-npm run test:ui:marketing
-
-# VSCode 可视化 / 调试
-npm run test:ui:ui
-npm run test:ui:debug
-npm run test:ui:headed
-
-# 启用移动端项目（先做浏览器预检，失败自动跳过 mobile，仅跑 desktop）
-npm run test:ui:mobile
-
-# 移动端项目（预检失败直接报错）
-npm run test:ui:mobile:strict
-
-# admin 联动 POC（API登录 -> 注入会话 -> 首页断言 -> API校验）
-npm run test:ui:admin:authflow
-
-# admin 联动模板（Arrange -> Act -> Assert）
-npm run test:ui:admin:scenario
-
-# admin 账号角色联动（UI+API）
-npm run test:ui:admin:onboarding
-
-# admin 账号角色联动（有头可视化）
-npm run test:ui:admin:onboarding:headed
-
-# admin 账号角色联动（Playwright Inspector 调试）
-npm run test:ui:admin:onboarding:debug
-
-# marketing HSD 表单（移动端）
-npm run test:ui:marketing:preaudit
-npm run test:ui:marketing:preaudit:headed
-npm run test:ui:marketing:hsd-forms
-npm run test:ui:marketing:hsd-forms:headed
-
-# 本地测试控制台（点击执行 + 页面内实时截图流）
-npm run dashboard
-```
-
-### 3.1 有头 / 无头模式说明
-
-结论：
-
-- 无头模式（headless）适合 CI 和批量回归
-- 有头模式（headed）适合观察页面行为和调试 UI 问题
-- Playwright UI 适合点选执行、查步骤、看 trace，不等于实时画面
-
-常用命令：
-
-- 无头：`npm run test:ui`、`npm run test:ui:admin:onboarding`
-- 有头：`npm run test:ui:headed`、`npm run test:ui:admin:onboarding:headed`
-- Inspector：`npm run test:ui:debug`、`npm run test:ui:admin:onboarding:debug`
-- Playwright UI：`npm run test:ui:ui`
-- 本地控制台实时截图流：`npm run dashboard`
-
-使用建议：
-
-1. 先用 `:headed` 或 `:debug` 复现问题。
-2. 定位完成后，再用无头模式回归，确认 CI 行为一致。
-
-常见误区：
-
-- 选择器依赖“可见文本但未等待稳定渲染”，无头更快，容易在元素尚未可操作时点击失败。
-- 用固定 `waitForTimeout` 替代状态等待，机器性能或网络波动会导致时序不稳定。
-- 弹窗/下拉定位过宽（匹配到隐藏节点），有头下偶然命中正确节点，无头下更易命中错误节点。
-- 依赖焦点、hover、动画结束等交互细节，但没有显式断言可交互状态（如 `toBeVisible` / `toBeEnabled`）。
-- 本地手工运行与 CI 分辨率、资源、并发不同，导致边界时序问题被放大。
-
-排查建议：
-
-1. 先用 `:headed` 或 `:debug` 复现并观察真实页面行为。
-2. 打开 trace/video，对失败步骤前后 DOM 和网络请求做对照。
-3. 把“固定等待”改为“状态等待”（元素可见、可点击、接口返回、路由完成）。
-
-### 3.2 Playwright UI 画面为什么不会实时变动
-
-结论：
-
-- Playwright UI 右侧的 `Action / Before / After` 是步骤快照，不是实时浏览器画面
-- 点击不同步骤时，右侧只会切换到该步骤对应的静态页面状态
-
-想看实时画面，使用：
-
-- `npm run test:ui:admin:onboarding:headed`
-- `npm run dashboard`
-
-使用建议：
-
-1. 用 `Playwright UI` 做单条 case 执行、步骤排查、trace 对照。
-2. 用 `:headed` / `:observe` 看浏览器真实连续变化。
-
-### 3.3 为什么点击执行后没有反应
-
-先看左侧状态是否为 `Skipped`。
-
-- 如果用例是 `Skipped`，通常不是卡住，而是启动 `Playwright UI` 时环境变量不对
-- `Playwright UI` 使用的是“启动 UI 那一刻”的环境变量，不是点进界面后再切换项目
-- 如果用例里有 `test.skip(adapter.projectId !== 'marketing')` 之类判断，而你启动 UI 时 project / adapter 不匹配，该用例会直接跳过
-
-例如 `marketing.preaudit.spec.ts` 必须用 `marketing-mobile` 项目启动：
-
-```bash
-E2E_PROJECT=marketing E2E_ENABLE_MOBILE=1 E2E_MARKETING_LOGIN_METHOD=password \
-npx playwright test tests/integration/marketing.preaudit.spec.ts --project=marketing-mobile --ui
-```
-
-如果你的 `.env.e2e.local` 里已经统一配置了账号密码，上面的命令就够了。
-
-需要确保已配置：
-
-```bash
-E2E_MARKETING_LOGIN_USERNAME=你的账号
-E2E_MARKETING_LOGIN_PASSWORD=你的密码
-```
-
-如果你临时改成短信登录，再补：
-
-```bash
-E2E_MARKETING_LOGIN_METHOD=sms
-E2E_MARKETING_LOGIN_PHONE=你的手机号
-E2E_MARKETING_LOGIN_CODE=123456
-```
-
-## 4. 环境变量
-
-推荐使用配置文件，避免每次命令行手动拼接：
-
-1. 复制模板：`cp .env.e2e.example .env.e2e.local`
-2. 在 `.env.e2e.local` 填入真实值（该文件会被 `*.local` 忽略）
-3. 直接执行测试命令（`playwright.config.ts` 会自动加载 `.env.e2e.local`，其次加载 `.env.e2e`）
-
-admin 联动场景最少只需要配置：
-
-- `E2E_ADMIN_LOGIN_USERNAME`
-- `E2E_ADMIN_LOGIN_PASSWORD`
-- `E2E_ADMIN_OAUTH2_CLIENT`（如当前环境需要）
-- `E2E_ADMIN_TENANT_ID`（如当前环境需要）
-
-如果你想在一个本地页面里点按钮执行，并看到页面内实时画面，使用：
-
-```bash
-npm run dashboard
-```
-
-默认地址：
-
-- `http://127.0.0.1:4328`
-- 如果 `4328` 被占用，dashboard 会自动尝试 `4329` 到 `4337`
-
-优先级（高 -> 低）：
-
-- 命令行临时环境变量（如 `E2E_ADMIN_LOGIN_USERNAME=... npm run ...`）
-- `.env.e2e.local`
-- `.env.e2e`
-
-- `E2E_PROJECT`：可选；仅当你想只跑单一业务时设置为 `admin` | `member` | `marketing`
-- `E2E_<PROJECT>_BASE_URL`：覆盖指定业务 UI 地址，例如 `E2E_ADMIN_BASE_URL`、`E2E_MARKETING_BASE_URL`
-- `E2E_<PROJECT>_API_BASE_URL`：覆盖指定业务 API 地址
-- `E2E_API_SMOKE_PATH`：API health smoke 路径，例如 `/health`、`/actuator/health`
-- `E2E_API_SMOKE_METHOD`：API health smoke 请求方法，默认 `GET`
-- `E2E_ADMIN_OAUTH2_CLIENT`：管理端登录 client（`Authorization: Basic ...`）
-- `E2E_ADMIN_TENANT_ID`：管理端租户头
-- `E2E_ENABLE_MOBILE=1`：启用移动端项目（`marketing-mobile` / `member-mobile` / `*-iphone12`）
-- `E2E_MOBILE_STRICT=1`：移动端预检失败时不降级，直接失败
-- `E2E_TRACE_MODE`：覆盖 Playwright trace 策略，支持 `off` / `on` / `retain-on-failure` / `on-first-retry` / `on-all-retries` / `retain-on-first-failure`
-- `E2E_<PROJECT>_LOGIN_USERNAME`：联动用例登录账号
-- `E2E_<PROJECT>_LOGIN_PASSWORD`：联动用例登录密码
-- `E2E_<PROJECT>_AUTH_TOKEN_URL`：可选，直接指定 token 接口完整 URL
-- `E2E_<PROJECT>_AUTH_TOKEN_PATH`：可选，默认 `/auth/oauth2/token`
-- `E2E_ADMIN_PWD_ENC_KEY`：admin 密码模式加密 key（默认 `xydxydxydxydhdkj`）
-- `E2E_ADMIN_LOGIN_IMAGE_CODE`：可选，登录页图形验证码（默认 `1234`，用例会始终点击“立即登录”做一次真实 UI 登录尝试）
-- `E2E_SCENARIO_PREPARE_PATH`：联动模板准备接口路径（必填）
-- `E2E_SCENARIO_VERIFY_PATH`：联动模板校验接口路径（必填）
-- `E2E_SCENARIO_UI_PATH`：联动模板 UI 页面路径，默认 `/`
-- `E2E_SCENARIO_UI_EXPECT_SELECTOR`：可选，UI 额外可见性断言选择器
-- `E2E_SCENARIO_PREPARE_BODY`：可选，JSON 字符串
-- `E2E_SCENARIO_VERIFY_BODY`：可选，JSON 字符串
-- `E2E_HSD_ORDER_MAIN_ID`：marketing HSD 表单测试订单主键（必填）
-- `E2E_HSD_ORDER_ACCESS_APPLY_ID`：marketing HSD 表单测试订单申请ID（必填）
-- `E2E_HSD_FINISH_STATUS`：表单完善状态，默认 `1`（已完善）
-
-## 5. VSCode 插件
-
-1. 安装 `Playwright Test for VSCode`（`ms-playwright.playwright`）
-2. 打开 VSCode Testing 面板
-3. 直接点击 `tests/*.spec.ts` 的 Run / Debug
-4. 失败后在测试详情查看 Trace/截图/视频
-
-## 6. 当前 Smoke
-
-- UI Smoke
-  - 本地渲染冒烟（零环境依赖）
-  - adapter 项目注解打印
-  - 业务首页可访问检查（需设置 `E2E_BASE_URL`）
-- API Smoke
-  - 显式配置的 health endpoint 可访问检查（需设置 `E2E_API_SMOKE_PATH`）
-- Admin Integration
-  - `API登录 -> 注入会话 -> 首页断言 -> API状态校验`（需配置 admin 凭据和 client）
-  - `Arrange(API) -> Act(UI) -> Assert(API)` 可配置模板（可快速复制成具体业务用例）
-  - `UI 创建角色/授权/创建账号 + API 新账号登录 + UI 新账号首页验证`
-
-## 7. 复用方式（admin 联动）
-
-在需要 admin 联动的用例中直接引入：
-
-```ts
-import { test, expect } from '../src/fixtures/admin-auth.fixture.js';
-```
-
-可直接使用：
-
-- `adminSession`：已登录会话信息（无配置时为 `undefined`）
-- `injectAdminSession(page)`：向页面注入已登录会话
-
-联动模板示例：
-
-```bash
-npm run test:ui:admin:scenario
-```
-
-如需临时覆盖（仅本次执行）：
-
-```bash
-E2E_LOGIN_USERNAME='demo' E2E_LOGIN_PASSWORD='demo' npm run test:ui:admin:scenario
-```
-
-admin onboarding 在 release 环境临时执行示例：
-
-```bash
-E2E_PROJECT=admin \
-E2E_BASE_URL=https://xydb-release.local.hzzxf.com \
-E2E_API_BASE_URL=https://xydb-release.local.hzzxf.com/api \
-npx playwright test tests/integration/admin.user-role-onboarding.spec.ts --project=chromium-desktop --headed --workers=1
-```
-
-admin onboarding 在 Playwright UI 中执行示例：
-
-```bash
-E2E_PROJECT=admin \
-E2E_BASE_URL=https://xydb-release.local.hzzxf.com \
-E2E_API_BASE_URL=https://xydb-release.local.hzzxf.com/api \
-npx playwright test tests/integration/admin.user-role-onboarding.spec.ts --project=chromium-desktop --ui
-```
+## 说明
+
+- 这个工具是“规则引擎 + Python 脚本扩展”的结构，适合继续叠加你自己的业务页面和控件规则。
+- 内置规则覆盖的是“可配置的通用 UI 规范检查”，不是完全无配置的 AI 视觉判断。
+- 对“错别字”和“术语是否恰当”这类问题，默认能力主要依赖乱码检测、禁用词、必备术语词表；如果要更强校对，可以在 Python 脚本里追加自定义检查。

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UI Audit Runner Demo</title>
+    <style>
+      :root {
+        --bg: #eef3f8;
+        --panel: #ffffff;
+        --text: #16324f;
+        --muted: #5c7088;
+        --line: #d7e0ea;
+        --brand: #175cd3;
+        --brand-dark: #0f3f8a;
+        --success: #147d4c;
+        --shadow: 0 24px 48px rgba(19, 47, 76, 0.12);
+        --radius: 18px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(23, 92, 211, 0.14), transparent 24%),
+          linear-gradient(180deg, #f4f8fc 0%, #edf2f7 100%);
+      }
+
+      .page-shell {
+        min-height: 100vh;
+        padding: 32px 20px 48px;
+      }
+
+      .page-grid {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 24px;
+        align-items: start;
+      }
+
+      .side-nav,
+      .app-shell {
+        background: var(--panel);
+        border: 1px solid rgba(215, 224, 234, 0.9);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+
+      .side-nav {
+        padding: 24px 20px;
+      }
+
+      .brand-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .brand-logo {
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .brand-icon,
+      .status-icon {
+        width: 20px;
+        height: 20px;
+        color: var(--brand);
+        flex: none;
+      }
+
+      .side-nav ul {
+        list-style: none;
+        margin: 0;
+        padding-left: 0;
+      }
+
+      .side-nav ul ul {
+        padding-left: 18px;
+        margin-top: 10px;
+      }
+
+      .nav-label,
+      .nav-entry {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        font-size: 14px;
+        color: var(--text);
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        padding: 0;
+      }
+
+      .side-nav li + li,
+      .side-nav li ul {
+        margin-top: 10px;
+      }
+
+      .app-shell {
+        width: 100%;
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .topbar-copy h1 {
+        margin: 0 0 8px;
+        font-size: 30px;
+      }
+
+      .status-copy,
+      .hint-message,
+      .audit-label,
+      .table-shell th {
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .status-copy {
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .toolbar-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .primary-action {
+        height: 44px;
+        padding: 0 18px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .wizard-panel,
+      .content-card,
+      .table-shell,
+      .route-panel {
+        margin-top: 24px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #fbfdff;
+      }
+
+      .wizard-panel,
+      .route-panel {
+        padding: 18px 20px;
+      }
+
+      .wizard-steps {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .step {
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: #e7edf5;
+        color: var(--muted);
+      }
+
+      .step--current {
+        background: rgba(23, 92, 211, 0.14);
+        color: var(--brand-dark);
+        font-weight: 700;
+      }
+
+      .wizard-restriction {
+        margin: 14px 0 0;
+        color: var(--muted);
+      }
+
+      .content-card {
+        padding: 22px;
+      }
+
+      .content-card h2,
+      .table-shell h2 {
+        margin: 0 0 16px;
+        font-size: 20px;
+      }
+
+      .form-stack {
+        display: grid;
+        gap: 16px;
+      }
+
+      .audit-row {
+        display: grid;
+        gap: 8px;
+      }
+
+      .audit-row input,
+      .audit-row select {
+        width: 100%;
+        height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 0 14px;
+        font-size: 14px;
+        color: var(--text);
+        background: #ffffff;
+      }
+
+      .inline-options {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .inline-options label {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--text);
+      }
+
+      .hint-message {
+        margin: 16px 0 0;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: #edf5ff;
+        color: var(--brand-dark);
+      }
+
+      #submit-status {
+        display: none;
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: #ecfaf3;
+        color: var(--success);
+      }
+
+      #submit-status.ready {
+        display: block;
+      }
+
+      .table-shell {
+        padding: 22px;
+      }
+
+      .table-scroll {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      td {
+        font-size: 14px;
+        color: var(--text);
+      }
+
+      .pagination {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .pagination button {
+        min-width: 38px;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #ffffff;
+      }
+
+      .route-panel {
+        display: none;
+      }
+
+      .route-panel.is-active {
+        display: block;
+      }
+
+      .dialog-overlay[hidden] {
+        display: none;
+      }
+
+      .dialog-overlay {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(10, 28, 48, 0.36);
+      }
+
+      .dialog-card {
+        width: min(360px, calc(100vw - 32px));
+        padding: 20px;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 20px 48px rgba(6, 24, 44, 0.22);
+      }
+
+      .dialog-card h3 {
+        margin: 0 0 10px;
+        font-size: 18px;
+      }
+
+      .dialog-card p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      @media (max-width: 900px) {
+        .page-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .side-nav,
+        .app-shell {
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="page-grid">
+        <nav class="side-nav" aria-label="主导航">
+          <div class="brand-bar">
+            <svg class="brand-icon status-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="8" fill="currentColor"></circle>
+            </svg>
+            <span class="brand-logo">UI审计控制台</span>
+          </div>
+          <ul>
+            <li><button id="go-home" class="nav-entry" type="button">首页概览</button></li>
+            <li>
+              <span class="nav-label">报表中心</span>
+              <ul>
+                <li><button id="open-details-nav" class="nav-entry" type="button">明细报告</button></li>
+                <li>
+                  <span class="nav-label">配置项</span>
+                  <ul>
+                    <li><button id="go-settings" class="nav-entry" type="button">布局规则</button></li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </nav>
+
+        <main id="main-window" class="app-shell">
+          <div class="topbar">
+            <div class="topbar-copy">
+              <h1>UI自动化审计演示页</h1>
+              <p class="status-copy">当前页面用于验证布局、控件、文案和导航规则，请按顺序完成检查。</p>
+            </div>
+            <div class="toolbar-actions">
+              <input id="global-search" type="text" placeholder="搜索规则或页面" aria-label="全局搜索" />
+              <button id="open-details" class="primary-action" type="button">查看详情</button>
+              <button id="open-dialog" class="primary-action" type="button">打开弹窗</button>
+            </div>
+          </div>
+
+          <section class="wizard-panel">
+            <div class="wizard-steps">
+              <div class="step">选择页面</div>
+              <div class="step step--current">校验控件</div>
+              <div class="step">生成报告</div>
+            </div>
+            <p class="wizard-restriction">当前步骤仅允许修改表单字段，提交后系统会自动刷新报告状态。</p>
+          </section>
+
+          <section class="content-card">
+            <h2>规则录入</h2>
+            <form id="audit-form">
+              <div class="form-stack">
+                <div class="audit-row">
+                  <label class="audit-label" for="keyword">检查关键字</label>
+                  <input id="keyword" name="keyword" type="text" placeholder="请输入页面关键字" />
+                </div>
+                <div class="audit-row">
+                  <label class="audit-label" for="owner">负责人</label>
+                  <input id="owner" name="owner" type="text" placeholder="请输入负责人姓名" />
+                </div>
+                <div class="audit-row">
+                  <label class="audit-label" for="stage">审核阶段</label>
+                  <select id="stage" name="stage">
+                    <option value="draft">草稿</option>
+                    <option value="review">复核中</option>
+                    <option value="done">已完成</option>
+                  </select>
+                </div>
+                <div class="audit-row">
+                  <span class="audit-label">检查模式</span>
+                  <div class="inline-options">
+                    <label><input id="choice-basic" type="radio" name="mode" value="basic" />基础模式</label>
+                    <label><input id="choice-strict" type="radio" name="mode" value="strict" />严格模式</label>
+                  </div>
+                </div>
+                <div class="audit-row">
+                  <span class="audit-label">执行条件</span>
+                  <div class="inline-options">
+                    <label><input id="agreement" type="checkbox" />我已确认页面规范与术语表</label>
+                  </div>
+                </div>
+              </div>
+
+              <p class="hint-message">
+                请先填写负责人，再点击提交按钮；若页面存在异常，系统会给出明确的处理建议与当前位置提示。
+              </p>
+              <button id="save-form" class="primary-action" type="submit">提交并生成报告</button>
+              <div id="submit-status" role="status">提交成功，请继续查看详情报告并确认当前状态。</div>
+            </form>
+          </section>
+
+          <section class="table-shell">
+            <h2>最近报告</h2>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>报告编号</th>
+                    <th>页面名称</th>
+                    <th>状态</th>
+                    <th>负责人</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>REP-1001</td><td>登录页</td><td>通过</td><td>王敏</td></tr>
+                  <tr><td>REP-1002</td><td>控制台首页</td><td>通过</td><td>李诚</td></tr>
+                  <tr><td>REP-1003</td><td>明细页</td><td>通过</td><td>周琴</td></tr>
+                  <tr><td>REP-1004</td><td>设置页</td><td>通过</td><td>赵楠</td></tr>
+                  <tr><td>REP-1005</td><td>表单页</td><td>通过</td><td>陈越</td></tr>
+                  <tr><td>REP-1006</td><td>报告页</td><td>通过</td><td>孙航</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination" data-testid="pagination">
+              <button type="button">1</button>
+              <button type="button">2</button>
+            </div>
+          </section>
+
+          <section id="home-panel" class="route-panel is-active">
+            <h2>首页概览</h2>
+            <p>当前状态稳定，可直接进入详情页继续审计。</p>
+          </section>
+
+          <section id="details-panel" class="route-panel">
+            <h2>明细报告</h2>
+            <p>这里用于查看页面元素布局、颜色对比与控件联动结果。</p>
+          </section>
+
+          <section id="settings-panel" class="route-panel">
+            <h2>布局规则</h2>
+            <p>这里用于配置导航层级、主窗体位置与响应式断点。</p>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div id="child-dialog" class="dialog-overlay" hidden>
+      <div class="dialog-card">
+        <h3>子窗体位置检查</h3>
+        <p>弹窗默认位于主窗体正中，用于演示父窗体与子窗体的布局校验。</p>
+        <div class="dialog-actions">
+          <button id="close-dialog" class="primary-action" type="button">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const homePanel = document.getElementById("home-panel");
+      const detailsPanel = document.getElementById("details-panel");
+      const settingsPanel = document.getElementById("settings-panel");
+      const dialog = document.getElementById("child-dialog");
+      const submitStatus = document.getElementById("submit-status");
+      const form = document.getElementById("audit-form");
+      const search = document.getElementById("global-search");
+
+      function showRoute(hash) {
+        const target = hash || "#home";
+        homePanel.classList.toggle("is-active", target === "#home");
+        detailsPanel.classList.toggle("is-active", target === "#details");
+        settingsPanel.classList.toggle("is-active", target === "#settings");
+      }
+
+      function goto(hash) {
+        window.location.hash = hash;
+        showRoute(hash);
+      }
+
+      if (!window.location.hash) {
+        window.location.hash = "#home";
+      }
+      showRoute(window.location.hash);
+
+      window.addEventListener("hashchange", () => {
+        showRoute(window.location.hash || "#home");
+      });
+
+      document.getElementById("go-home").addEventListener("click", () => goto("#home"));
+      document.getElementById("open-details").addEventListener("click", () => goto("#details"));
+      document.getElementById("open-details-nav").addEventListener("click", () => goto("#details"));
+      document.getElementById("go-settings").addEventListener("click", () => goto("#settings"));
+
+      document.getElementById("open-dialog").addEventListener("click", () => {
+        dialog.hidden = false;
+      });
+
+      document.getElementById("close-dialog").addEventListener("click", () => {
+        dialog.hidden = true;
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        submitStatus.classList.add("ready");
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (event.altKey && !event.shiftKey && (event.key === "d" || event.key === "D")) {
+          event.preventDefault();
+          goto("#details");
+        }
+        if (event.altKey && event.shiftKey && (event.key === "s" || event.key === "S")) {
+          event.preventDefault();
+          goto("#settings");
+        }
+        if (event.altKey && !event.shiftKey && (event.key === "f" || event.key === "F")) {
+          event.preventDefault();
+          search.focus();
+        }
+      });
+    </script>
+  </body>
+</html>
