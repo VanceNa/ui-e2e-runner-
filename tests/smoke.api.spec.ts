@@ -1,10 +1,11 @@
 import { expect, test } from '../src/fixtures/test.fixture.js';
+import { getAdapterApiBaseURL, getAdapterEnv } from '../src/env.js';
 
 test.describe('API Smoke', () => {
   test('可访问指定 API', async ({ request, adapter }, testInfo) => {
-    const apiBaseURL = process.env.E2E_API_BASE_URL || adapter.apiBaseUrl;
-    const smokePath = process.env.E2E_API_SMOKE_PATH;
-    const smokeMethod = (process.env.E2E_API_SMOKE_METHOD || 'GET').toUpperCase();
+    const apiBaseURL = getAdapterApiBaseURL(adapter);
+    const smokePath = getAdapterEnv(adapter, 'API_SMOKE_PATH');
+    const smokeMethod = (getAdapterEnv(adapter, 'API_SMOKE_METHOD') || 'GET').toUpperCase();
     test.skip(!smokePath, '未设置 E2E_API_SMOKE_PATH，跳过 API health smoke');
     const normalizedSmokePath = smokePath || '';
 

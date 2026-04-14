@@ -1,4 +1,5 @@
 import { expect, test } from '../../src/fixtures/test.fixture.js';
+import { getAdapterBaseURL, getAdapterEnv } from '../../src/env.js';
 
 function trimSlash(url: string) {
   return url.replace(/\/+$/, '');
@@ -6,18 +7,18 @@ function trimSlash(url: string) {
 
 function readMarketingEnv(adapter: any) {
   return {
-    baseURL: process.env.E2E_BASE_URL || adapter.baseUrl,
-    loginMethod: (process.env.E2E_LOGIN_METHOD || 'sms').toLowerCase(),
-    phone: process.env.E2E_LOGIN_PHONE || '13212344321',
-    smsCode: process.env.E2E_LOGIN_CODE || String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0'),
-    username: process.env.E2E_LOGIN_USERNAME || '',
-    password: process.env.E2E_LOGIN_PASSWORD || '',
-    contractStateName: process.env.E2E_HSD_CONTRACT_STATE_NAME || '合同开立',
-    contractButtonText: process.env.E2E_HSD_CONTRACT_BUTTON_TEXT || '开立',
-    offlineStateName: process.env.E2E_HSD_OFFLINE_STATE_NAME || '线下面签录入',
-    offlineButtonText: process.env.E2E_HSD_OFFLINE_BUTTON_TEXT || '录入',
-    uploadStateName: process.env.E2E_HSD_UPLOAD_STATE_NAME || '用信审批',
-    uploadButtonText: process.env.E2E_HSD_UPLOAD_BUTTON_TEXT || '用信资料',
+    baseURL: getAdapterBaseURL(adapter),
+    loginMethod: (getAdapterEnv(adapter, 'LOGIN_METHOD') || 'sms').toLowerCase(),
+    phone: getAdapterEnv(adapter, 'LOGIN_PHONE') || '13212344321',
+    smsCode: getAdapterEnv(adapter, 'LOGIN_CODE') || String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0'),
+    username: getAdapterEnv(adapter, 'LOGIN_USERNAME') || '',
+    password: getAdapterEnv(adapter, 'LOGIN_PASSWORD') || '',
+    contractStateName: getAdapterEnv(adapter, 'HSD_CONTRACT_STATE_NAME') || '合同开立',
+    contractButtonText: getAdapterEnv(adapter, 'HSD_CONTRACT_BUTTON_TEXT') || '开立',
+    offlineStateName: getAdapterEnv(adapter, 'HSD_OFFLINE_STATE_NAME') || '线下面签录入',
+    offlineButtonText: getAdapterEnv(adapter, 'HSD_OFFLINE_BUTTON_TEXT') || '录入',
+    uploadStateName: getAdapterEnv(adapter, 'HSD_UPLOAD_STATE_NAME') || '用信审批',
+    uploadButtonText: getAdapterEnv(adapter, 'HSD_UPLOAD_BUTTON_TEXT') || '用信资料',
   };
 }
 
@@ -48,13 +49,27 @@ async function loginByPasswordUI(page: any, env: ReturnType<typeof readMarketing
   );
   await loginBtn.click();
   await loginReq;
-  const hasCaptcha = await page.frameLocator('iframe').getByText('拖动下方滑块完成拼图').isVisible().catch(() => false);
+
+  const leftLoginPage = await page
+    .waitForURL((url: URL) => !url.pathname.includes('/login'), { timeout: 15_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (leftLoginPage) {
+    return;
+  }
+
+  const hasCaptcha = await page
+    .frameLocator('iframe')
+    .getByText('拖动下方滑块完成拼图')
+    .isVisible()
+    .catch(() => false);
   if (hasCaptcha) {
     throw new Error(
-      `当前环境出现滑块验证码，非预期登录路径。请确认 E2E_BASE_URL（当前: ${env.baseURL}）是否为你日常手工登录且无需验证码的环境。`,
+      `登录后仍停留在登录页，且检测到滑块验证码。请确认当前 marketing baseURL（${env.baseURL}）是否会触发安全验证。`,
     );
   }
-  await page.waitForURL((url: URL) => !url.pathname.includes('/login'), { timeout: 120_000 });
+
+  throw new Error(`登录后 15 秒内未跳转，且未检测到明确验证码，请检查登录接口返回和页面错误提示。当前地址：${env.baseURL}`);
 }
 
 async function loginBySmsUI(page: any, env: ReturnType<typeof readMarketingEnv>) {
@@ -103,8 +118,19 @@ async function loginBySmsUI(page: any, env: ReturnType<typeof readMarketingEnv>)
 
 async function loginByPreferredMethod(page: any, env: ReturnType<typeof readMarketingEnv>) {
   if (env.loginMethod === 'password') {
-    await loginByPasswordUI(page, env);
-    return;
+    try {
+      await loginByPasswordUI(page, env);
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const canFallback = Boolean(env.phone);
+      const shouldFallback = /未跳转|验证码|安全验证|timed out|Timeout/i.test(message);
+      if (!canFallback || !shouldFallback) {
+        throw error;
+      }
+      await loginBySmsUI(page, env);
+      return;
+    }
   }
   await loginBySmsUI(page, env);
 }
@@ -302,7 +328,7 @@ test.describe('Marketing HSD Product Forms', () => {
     test.skip(adapter.projectId !== 'marketing', '仅 marketing 执行');
     const env = readMarketingEnv(adapter);
     if (env.loginMethod === 'password') {
-      test.skip(!env.username || !env.password, '密码登录模式需配置 E2E_LOGIN_USERNAME / E2E_LOGIN_PASSWORD');
+      test.skip(!env.username || !env.password, '密码登录模式需配置 marketing 账号密码（支持 E2E_MARKETING_LOGIN_USERNAME / E2E_MARKETING_LOGIN_PASSWORD）');
     } else {
       test.skip(!env.phone, '短信登录模式需配置 E2E_LOGIN_PHONE');
     }
@@ -314,7 +340,7 @@ test.describe('Marketing HSD Product Forms', () => {
     test.skip(adapter.projectId !== 'marketing', '仅 marketing 执行');
     const env = readMarketingEnv(adapter);
     if (env.loginMethod === 'password') {
-      test.skip(!env.username || !env.password, '密码登录模式需配置 E2E_LOGIN_USERNAME / E2E_LOGIN_PASSWORD');
+      test.skip(!env.username || !env.password, '密码登录模式需配置 marketing 账号密码（支持 E2E_MARKETING_LOGIN_USERNAME / E2E_MARKETING_LOGIN_PASSWORD）');
     } else {
       test.skip(!env.phone, '短信登录模式需配置 E2E_LOGIN_PHONE');
     }
@@ -450,7 +476,7 @@ test.describe('Marketing HSD Product Forms', () => {
     test.skip(adapter.projectId !== 'marketing', '仅 marketing 执行');
     const env = readMarketingEnv(adapter);
     if (env.loginMethod === 'password') {
-      test.skip(!env.username || !env.password, '密码登录模式需配置 E2E_LOGIN_USERNAME / E2E_LOGIN_PASSWORD');
+      test.skip(!env.username || !env.password, '密码登录模式需配置 marketing 账号密码（支持 E2E_MARKETING_LOGIN_USERNAME / E2E_MARKETING_LOGIN_PASSWORD）');
     } else {
       test.skip(!env.phone, '短信登录模式需配置 E2E_LOGIN_PHONE');
     }
@@ -647,7 +673,7 @@ test.describe('Marketing HSD Product Forms', () => {
     test.skip(adapter.projectId !== 'marketing', '仅 marketing 执行');
     const env = readMarketingEnv(adapter);
     if (env.loginMethod === 'password') {
-      test.skip(!env.username || !env.password, '密码登录模式需配置 E2E_LOGIN_USERNAME / E2E_LOGIN_PASSWORD');
+      test.skip(!env.username || !env.password, '密码登录模式需配置 marketing 账号密码（支持 E2E_MARKETING_LOGIN_USERNAME / E2E_MARKETING_LOGIN_PASSWORD）');
     } else {
       test.skip(!env.phone, '短信登录模式需配置 E2E_LOGIN_PHONE');
     }

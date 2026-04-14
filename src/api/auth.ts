@@ -2,6 +2,7 @@ import type { APIRequestContext } from '@playwright/test';
 import { createCipheriv } from 'node:crypto';
 
 import type { ProjectAdapter } from '../adapters/types.js';
+import { getAdapterEnv } from '../env.js';
 
 export interface PasswordLoginInput {
   apiBaseURL: string;
@@ -17,12 +18,13 @@ export interface AuthSession {
   raw: unknown;
 }
 
-function resolveAuthTokenUrl(apiBaseURL: string): string {
-  if (process.env.E2E_AUTH_TOKEN_URL) {
-    return process.env.E2E_AUTH_TOKEN_URL;
+function resolveAuthTokenUrl(adapter: ProjectAdapter, apiBaseURL: string): string {
+  const directUrl = getAdapterEnv(adapter, 'AUTH_TOKEN_URL');
+  if (directUrl) {
+    return directUrl;
   }
   // 允许通过 path 覆盖不同环境网关路由，未配置时回落到历史默认路径。
-  const authPath = process.env.E2E_AUTH_TOKEN_PATH || '/auth/oauth2/token';
+  const authPath = getAdapterEnv(adapter, 'AUTH_TOKEN_PATH') || '/auth/oauth2/token';
   const normalizedPath = authPath.startsWith('/') ? authPath : `/${authPath}`;
   return `${apiBaseURL}${normalizedPath}`;
 }
@@ -47,7 +49,7 @@ function tryExtractToken(json: any): { accessToken?: string; refreshToken?: stri
 }
 
 function encryptPasswordForAdmin(password: string): string {
-  const key = (process.env.E2E_PWD_ENC_KEY || 'xydxydxydxydhdkj').replace(/^['"]|['"]$/g, '');
+  const key = (getAdapterEnv('admin', 'PWD_ENC_KEY') || 'xydxydxydxydhdkj').replace(/^['"]|['"]$/g, '');
   const keyBuffer = Buffer.from(key, 'utf8');
   // admin 端沿用线上同款 aes-128-cfb（key 同时作为 iv）的加密约定。
   const cipher = createCipheriv('aes-128-cfb', keyBuffer, keyBuffer);
@@ -59,8 +61,8 @@ export async function loginByPassword(
   request: APIRequestContext,
   input: PasswordLoginInput,
 ): Promise<AuthSession> {
-  const tokenUrl = resolveAuthTokenUrl(input.apiBaseURL);
-  const fallbackBasicAuth = process.env.E2E_OAUTH2_CLIENT || 'Basic cGlnOnBpZw==';
+  const tokenUrl = resolveAuthTokenUrl(input.adapter, input.apiBaseURL);
+  const fallbackBasicAuth = getAdapterEnv(input.adapter, 'OAUTH2_CLIENT') || 'Basic cGlnOnBpZw==';
   const headerAuth = input.basicAuth || input.adapter.buildAuthHeaders().Authorization || fallbackBasicAuth;
   const headers = {
     ...input.adapter.buildAuthHeaders(),

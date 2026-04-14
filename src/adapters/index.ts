@@ -17,6 +17,10 @@ export function getTargetProjectId(): ProjectId {
   return id;
 }
 
+export function getAdapterById(id: ProjectId): ProjectAdapter {
+  return ADAPTERS[id];
+}
+
 export function getTargetAdapter(): ProjectAdapter {
   return ADAPTERS[getTargetProjectId()];
 }

@@ -1,4 +1,5 @@
 import { expect, test } from '../../src/fixtures/test.fixture.js';
+import { getAdapterBaseURL, getAdapterEnv } from '../../src/env.js';
 import { captureLivePreview } from '../../src/live-preview.js';
 
 function trimSlash(url: string) {
@@ -7,9 +8,9 @@ function trimSlash(url: string) {
 
 function readMemberEnv(adapter: any) {
   return {
-    baseURL: process.env.E2E_BASE_URL || adapter.baseUrl,
-    phone: process.env.E2E_LOGIN_PHONE || '13212344321',
-    smsCode: process.env.E2E_LOGIN_CODE || String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0'),
+    baseURL: getAdapterBaseURL(adapter),
+    phone: getAdapterEnv(adapter, 'LOGIN_PHONE') || '13212344321',
+    smsCode: getAdapterEnv(adapter, 'LOGIN_CODE') || String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0'),
   };
 }
 

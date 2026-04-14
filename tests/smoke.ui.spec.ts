@@ -1,4 +1,5 @@
 import { expect, test } from '../src/fixtures/test.fixture.js';
+import { getAdapterBaseURL } from '../src/env.js';
 
 test.describe('UI Smoke', () => {
   test('本地页面可完成基础渲染（MVP默认用例）', async ({ page }) => {
@@ -21,10 +22,11 @@ test.describe('UI Smoke', () => {
     expect(adapter.projectId).toBeTruthy();
   });
 
-  test('可访问指定业务首页（需显式设置 E2E_BASE_URL）', async ({ page, adapter }) => {
-    test.skip(!process.env.E2E_BASE_URL, '未设置 E2E_BASE_URL，跳过业务站点冒烟');
+  test('可访问当前项目配置的业务首页', async ({ page, adapter }) => {
+    const baseURL = getAdapterBaseURL(adapter);
+    test.skip(!baseURL, '未设置业务 baseURL，跳过业务站点冒烟');
 
-    await page.goto('/');
+    await page.goto(baseURL);
     await adapter.homeReadyCheck(page);
   });
 });

@@ -1,16 +1,16 @@
 import { test as base, expect } from "@playwright/test";
 
-import { getTargetAdapter } from "../adapters/index.js";
 import type { ProjectAdapter } from "../adapters/types.js";
 import { bindLivePreview } from "../live-preview.js";
+import { getProjectAdapter } from "../projects.js";
 
 interface TestFixtures {
   adapter: ProjectAdapter;
 }
 
 export const test = base.extend<TestFixtures>({
-  adapter: async ({}, use) => {
-    await use(getTargetAdapter());
+  adapter: async ({}, use, testInfo) => {
+    await use(getProjectAdapter(testInfo.project));
   },
   page: async ({ page }, use) => {
     const stopPreview = bindLivePreview(page, "default-page");

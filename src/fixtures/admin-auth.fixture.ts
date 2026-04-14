@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { loginByPassword } from '../api/auth.js';
+import { getAdapterApiBaseURL, getAdapterBaseURL, getAdapterEnv } from '../env.js';
 import { expect, test as base } from './test.fixture.js';
 
 export interface AdminSession {
@@ -22,10 +23,10 @@ export const test = base.extend<AdminAuthFixtures>({
       return;
     }
 
-    const username = process.env.E2E_LOGIN_USERNAME;
-    const password = process.env.E2E_LOGIN_PASSWORD;
-    const baseURL = process.env.E2E_BASE_URL || adapter.baseUrl;
-    const apiBaseURL = process.env.E2E_API_BASE_URL || adapter.apiBaseUrl;
+    const username = getAdapterEnv(adapter, 'LOGIN_USERNAME');
+    const password = getAdapterEnv(adapter, 'LOGIN_PASSWORD');
+    const baseURL = getAdapterBaseURL(adapter);
+    const apiBaseURL = getAdapterApiBaseURL(adapter);
 
     // 缺少登录必要参数时降级为 undefined，让具体用例自行 skip/报错，而不是在 fixture 启动阶段硬失败。
     if (!username || !password || !baseURL || !apiBaseURL) {

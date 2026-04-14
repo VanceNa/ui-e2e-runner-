@@ -5,14 +5,15 @@ import type { Browser, BrowserContext, PlaywrightTestConfig } from "@playwright/
 import { chromium, defineConfig, devices } from "@playwright/test";
 import { config as loadEnv } from "dotenv";
 
-import { getTargetAdapter } from "./src/adapters/index.js";
+import { getAdapterById, getAllAdapters, getTargetProjectId } from "./src/adapters/index.js";
+import type { ProjectId } from "./src/adapters/types.js";
+import { getAdapterBaseURL } from "./src/env.js";
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
 // 加载顺序：local -> shared；dotenv 默认不会覆盖已存在的 process.env（命令行变量优先级最高）。
 loadEnv({ path: resolve(rootDir, ".env.e2e.local"), quiet: true });
 loadEnv({ path: resolve(rootDir, ".env.e2e"), quiet: true });
 
-const target = getTargetAdapter();
 const enableMobile = process.env.E2E_ENABLE_MOBILE === "1";
 const strictMobile = process.env.E2E_MOBILE_STRICT === "1";
 const forceMobile = process.env.E2E_FORCE_MOBILE === "1";
@@ -58,31 +59,56 @@ async function canRunMobileProject(): Promise<boolean> {
   }
 }
 
-const projects: NonNullable<PlaywrightTestConfig["projects"]> = [
-  {
-    name: "chromium-desktop",
-    use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
-  },
-];
+const selectedProjectId = process.env.E2E_PROJECT as ProjectId | undefined;
+const selectedAdapters = selectedProjectId ? [getAdapterById(getTargetProjectId())] : getAllAdapters();
+const mobileReady = enableMobile ? (forceMobile ? true : await canRunMobileProject()) : false;
+const projects: NonNullable<PlaywrightTestConfig["projects"]> = [];
 
-if (enableMobile) {
-  const mobileReady = forceMobile ? true : await canRunMobileProject();
-  if (mobileReady) {
+for (const adapter of selectedAdapters) {
+  if (adapter.defaultViewport === "desktop") {
     projects.push({
-      name: "chromium-mobile",
+      name: `${adapter.projectId}-desktop`,
+      metadata: {
+        adapterId: adapter.projectId,
+        deviceKind: "desktop",
+      },
       use: {
-        ...devices["Pixel 7"],
-        browserName: "chromium",
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+        baseURL: getAdapterBaseURL(adapter),
       },
     });
-    projects.push({
-      name: "chromium-iphone12",
-      use: {
-        ...devices["iPhone 12"],
-        browserName: "chromium",
-      },
-    });
+    continue;
   }
+
+  if (!mobileReady) {
+    continue;
+  }
+
+  projects.push({
+    name: `${adapter.projectId}-mobile`,
+    metadata: {
+      adapterId: adapter.projectId,
+      deviceKind: "mobile",
+    },
+    use: {
+      ...devices["Pixel 7"],
+      browserName: "chromium",
+      baseURL: getAdapterBaseURL(adapter),
+    },
+  });
+  projects.push({
+    name: `${adapter.projectId}-iphone12`,
+    metadata: {
+      adapterId: adapter.projectId,
+      deviceKind: "mobile",
+    },
+    use: {
+      ...devices["iPhone 12"],
+      browserName: "chromium",
+      baseURL: getAdapterBaseURL(adapter),
+    },
+  });
 }
 
 export default defineConfig({
@@ -93,12 +119,7 @@ export default defineConfig({
   workers: process.env.CI ? 2 : undefined,
   timeout: 30_000,
   reporter: [["html", { open: "never" }], ["list"]],
-  metadata: {
-    e2eProject: target.projectId,
-    e2eProjectDescription: target.description,
-  },
   use: {
-    baseURL: process.env.E2E_BASE_URL || target.baseUrl,
     trace: traceMode,
     screenshot: "only-on-failure",
     video: "retain-on-failure",

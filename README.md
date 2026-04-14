@@ -40,7 +40,7 @@ tests/
 ## 3. 运行命令
 
 ```bash
-# 默认 admin
+# 默认入口
 npm run test:ui
 
 # 指定项目
@@ -74,15 +74,9 @@ npm run test:ui:admin:onboarding:headed
 # admin 账号角色联动（Playwright Inspector 调试）
 npm run test:ui:admin:onboarding:debug
 
-# admin 账号角色联动（release 环境，可视化观察）
-npm run onboarding:observe
-
-# admin 账号角色联动（release 环境，Playwright UI 点击执行）
-npm run onboarding:ui
-
 # marketing HSD 表单（移动端）
-npm run test:ui:marketing:login
-npm run test:ui:marketing:hsd-priority
+npm run test:ui:marketing:preaudit
+npm run test:ui:marketing:preaudit:headed
 npm run test:ui:marketing:hsd-forms
 npm run test:ui:marketing:hsd-forms:headed
 
@@ -92,34 +86,26 @@ npm run dashboard
 
 ### 3.1 有头 / 无头模式说明
 
-- 无头模式（headless）：不显示浏览器窗口，后台执行；速度通常更快，适合 CI 和批量回归。
-- 有头模式（headed）：显示真实浏览器窗口；便于观察页面行为和调试 UI 问题。
+结论：
 
-本项目对应命令：
+- 无头模式（headless）适合 CI 和批量回归
+- 有头模式（headed）适合观察页面行为和调试 UI 问题
+- Playwright UI 适合点选执行、查步骤、看 trace，不等于实时画面
 
-- 无头（默认）：`npm run test:ui`、`npm run test:ui:admin:onboarding`
+常用命令：
+
+- 无头：`npm run test:ui`、`npm run test:ui:admin:onboarding`
 - 有头：`npm run test:ui:headed`、`npm run test:ui:admin:onboarding:headed`
-- Inspector 调试：`npm run test:ui:debug`、`npm run test:ui:admin:onboarding:debug`
-- Playwright UI 点击执行：`npm run onboarding:ui`
+- Inspector：`npm run test:ui:debug`、`npm run test:ui:admin:onboarding:debug`
+- Playwright UI：`npm run test:ui:ui`
+- 本地控制台实时截图流：`npm run dashboard`
 
-针对 release 环境的简化命令：
+使用建议：
 
-- `npm run onboarding`：release 环境无头执行
-- `npm run onboarding:observe`：release 环境有头观察执行
-- `npm run onboarding:ui`：打开 Playwright UI，可在页面里点击单独执行该用例
-- `npm run dashboard`：打开本地测试控制台，按项目/用例点击执行，并在页面内查看实时截图与日志
+1. 先用 `:headed` 或 `:debug` 复现问题。
+2. 定位完成后，再用无头模式回归，确认 CI 行为一致。
 
-说明：
-
-- `执行文件`：执行整个 spec 文件
-- 文件卡片里的浅色按钮：执行该文件中的单条 case
-
-建议：
-
-1. 先用有头/Inspector定位问题。
-2. 修复后再用无头模式回归，确保 CI 行为一致。
-
-常见误区（有头通过、无头失败）：
+常见误区：
 
 - 选择器依赖“可见文本但未等待稳定渲染”，无头更快，容易在元素尚未可操作时点击失败。
 - 用固定 `waitForTimeout` 替代状态等待，机器性能或网络波动会导致时序不稳定。
@@ -142,7 +128,6 @@ npm run dashboard
 
 想看实时画面，使用：
 
-- `npm run onboarding:observe`
 - `npm run test:ui:admin:onboarding:headed`
 - `npm run dashboard`
 
@@ -150,6 +135,38 @@ npm run dashboard
 
 1. 用 `Playwright UI` 做单条 case 执行、步骤排查、trace 对照。
 2. 用 `:headed` / `:observe` 看浏览器真实连续变化。
+
+### 3.3 为什么点击执行后没有反应
+
+先看左侧状态是否为 `Skipped`。
+
+- 如果用例是 `Skipped`，通常不是卡住，而是启动 `Playwright UI` 时环境变量不对
+- `Playwright UI` 使用的是“启动 UI 那一刻”的环境变量，不是点进界面后再切换项目
+- 如果用例里有 `test.skip(adapter.projectId !== 'marketing')` 之类判断，而你启动 UI 时 project / adapter 不匹配，该用例会直接跳过
+
+例如 `marketing.preaudit.spec.ts` 必须用 `marketing-mobile` 项目启动：
+
+```bash
+E2E_PROJECT=marketing E2E_ENABLE_MOBILE=1 E2E_MARKETING_LOGIN_METHOD=password \
+npx playwright test tests/integration/marketing.preaudit.spec.ts --project=marketing-mobile --ui
+```
+
+如果你的 `.env.e2e.local` 里已经统一配置了账号密码，上面的命令就够了。
+
+需要确保已配置：
+
+```bash
+E2E_MARKETING_LOGIN_USERNAME=你的账号
+E2E_MARKETING_LOGIN_PASSWORD=你的密码
+```
+
+如果你临时改成短信登录，再补：
+
+```bash
+E2E_MARKETING_LOGIN_METHOD=sms
+E2E_MARKETING_LOGIN_PHONE=你的手机号
+E2E_MARKETING_LOGIN_CODE=123456
+```
 
 ## 4. 环境变量
 
@@ -161,16 +178,10 @@ npm run dashboard
 
 admin 联动场景最少只需要配置：
 
-- `E2E_LOGIN_USERNAME`
-- `E2E_LOGIN_PASSWORD`
-- `E2E_OAUTH2_CLIENT`（如当前环境需要）
-- `E2E_TENANT_ID`（如当前环境需要）
-
-这样你后续就不需要每次手工输入：
-
-```bash
-npm run onboarding:observe
-```
+- `E2E_ADMIN_LOGIN_USERNAME`
+- `E2E_ADMIN_LOGIN_PASSWORD`
+- `E2E_ADMIN_OAUTH2_CLIENT`（如当前环境需要）
+- `E2E_ADMIN_TENANT_ID`（如当前环境需要）
 
 如果你想在一个本地页面里点按钮执行，并看到页面内实时画面，使用：
 
@@ -185,26 +196,26 @@ npm run dashboard
 
 优先级（高 -> 低）：
 
-- 命令行临时环境变量（如 `E2E_LOGIN_USERNAME=... npm run ...`）
+- 命令行临时环境变量（如 `E2E_ADMIN_LOGIN_USERNAME=... npm run ...`）
 - `.env.e2e.local`
 - `.env.e2e`
 
-- `E2E_PROJECT`：`admin` | `member` | `marketing`，默认 `admin`
-- `E2E_BASE_URL`：覆盖 UI 地址（用于业务首页冒烟）
-- `E2E_API_BASE_URL`：覆盖 API 地址（用于 API 冒烟）
+- `E2E_PROJECT`：可选；仅当你想只跑单一业务时设置为 `admin` | `member` | `marketing`
+- `E2E_<PROJECT>_BASE_URL`：覆盖指定业务 UI 地址，例如 `E2E_ADMIN_BASE_URL`、`E2E_MARKETING_BASE_URL`
+- `E2E_<PROJECT>_API_BASE_URL`：覆盖指定业务 API 地址
 - `E2E_API_SMOKE_PATH`：API health smoke 路径，例如 `/health`、`/actuator/health`
 - `E2E_API_SMOKE_METHOD`：API health smoke 请求方法，默认 `GET`
-- `E2E_OAUTH2_CLIENT`：管理端登录 client（`Authorization: Basic ...`）
-- `E2E_TENANT_ID`：管理端租户头
-- `E2E_ENABLE_MOBILE=1`：启用 `chromium-mobile` 项目
+- `E2E_ADMIN_OAUTH2_CLIENT`：管理端登录 client（`Authorization: Basic ...`）
+- `E2E_ADMIN_TENANT_ID`：管理端租户头
+- `E2E_ENABLE_MOBILE=1`：启用移动端项目（`marketing-mobile` / `member-mobile` / `*-iphone12`）
 - `E2E_MOBILE_STRICT=1`：移动端预检失败时不降级，直接失败
 - `E2E_TRACE_MODE`：覆盖 Playwright trace 策略，支持 `off` / `on` / `retain-on-failure` / `on-first-retry` / `on-all-retries` / `retain-on-first-failure`
-- `E2E_LOGIN_USERNAME`：联动用例登录账号
-- `E2E_LOGIN_PASSWORD`：联动用例登录密码
-- `E2E_AUTH_TOKEN_URL`：可选，直接指定 token 接口完整 URL
-- `E2E_AUTH_TOKEN_PATH`：可选，默认 `/auth/oauth2/token`
-- `E2E_PWD_ENC_KEY`：admin 密码模式加密 key（默认 `xydxydxydxydhdkj`）
-- `E2E_LOGIN_IMAGE_CODE`：可选，登录页图形验证码（默认 `1234`，用例会始终点击“立即登录”做一次真实 UI 登录尝试）
+- `E2E_<PROJECT>_LOGIN_USERNAME`：联动用例登录账号
+- `E2E_<PROJECT>_LOGIN_PASSWORD`：联动用例登录密码
+- `E2E_<PROJECT>_AUTH_TOKEN_URL`：可选，直接指定 token 接口完整 URL
+- `E2E_<PROJECT>_AUTH_TOKEN_PATH`：可选，默认 `/auth/oauth2/token`
+- `E2E_ADMIN_PWD_ENC_KEY`：admin 密码模式加密 key（默认 `xydxydxydxydhdkj`）
+- `E2E_ADMIN_LOGIN_IMAGE_CODE`：可选，登录页图形验证码（默认 `1234`，用例会始终点击“立即登录”做一次真实 UI 登录尝试）
 - `E2E_SCENARIO_PREPARE_PATH`：联动模板准备接口路径（必填）
 - `E2E_SCENARIO_VERIFY_PATH`：联动模板校验接口路径（必填）
 - `E2E_SCENARIO_UI_PATH`：联动模板 UI 页面路径，默认 `/`
@@ -258,4 +269,22 @@ npm run test:ui:admin:scenario
 
 ```bash
 E2E_LOGIN_USERNAME='demo' E2E_LOGIN_PASSWORD='demo' npm run test:ui:admin:scenario
+```
+
+admin onboarding 在 release 环境临时执行示例：
+
+```bash
+E2E_PROJECT=admin \
+E2E_BASE_URL=https://xydb-release.local.hzzxf.com \
+E2E_API_BASE_URL=https://xydb-release.local.hzzxf.com/api \
+npx playwright test tests/integration/admin.user-role-onboarding.spec.ts --project=chromium-desktop --headed --workers=1
+```
+
+admin onboarding 在 Playwright UI 中执行示例：
+
+```bash
+E2E_PROJECT=admin \
+E2E_BASE_URL=https://xydb-release.local.hzzxf.com \
+E2E_API_BASE_URL=https://xydb-release.local.hzzxf.com/api \
+npx playwright test tests/integration/admin.user-role-onboarding.spec.ts --project=chromium-desktop --ui
 ```

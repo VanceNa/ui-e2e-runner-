@@ -1,6 +1,7 @@
 import type { APIRequestContext, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
+import { getAdapterEnv } from '../env.js';
 import type { BootstrapSecrets, ProjectAdapter } from './types.js';
 
 export const adminAdapter: ProjectAdapter = {
@@ -12,10 +13,10 @@ export const adminAdapter: ProjectAdapter = {
   clientToc: 'MG',
   defaultViewport: 'desktop',
   buildAuthHeaders(token?: string) {
-    const oauthClient = process.env.E2E_OAUTH2_CLIENT || '';
+    const oauthClient = getAdapterEnv('admin', 'OAUTH2_CLIENT') || '';
     const headers: Record<string, string> = {
       'CLIENT-TOC': 'MG',
-      'TENANT-ID': process.env.E2E_TENANT_ID || '',
+      'TENANT-ID': getAdapterEnv('admin', 'TENANT_ID') || '',
     };
     if (token) {
       headers.Authorization = `Bearer ${token}`;

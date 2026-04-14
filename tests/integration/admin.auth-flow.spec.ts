@@ -1,12 +1,13 @@
 import { expect, test } from '../../src/fixtures/admin-auth.fixture.js';
+import { isDesktopProject } from '../../src/projects.js';
 
 test.describe('Admin Integration', () => {
   test(
     'API登录 -> 注入会话 -> 首页断言 -> API状态校验',
     async ({ adapter, page, request, adminSession, injectAdminSession }, testInfo) => {
     test.skip(adapter.projectId !== 'admin', '仅 admin 项目执行该联动用例');
-    test.skip(testInfo.project.name !== 'chromium-desktop', '仅 desktop 项目执行该联动用例');
-    test.skip(!adminSession, '未配置联动用例所需变量：E2E_OAUTH2_CLIENT/E2E_LOGIN_USERNAME/E2E_LOGIN_PASSWORD');
+    test.skip(!isDesktopProject(testInfo.project), '仅 desktop 项目执行该联动用例');
+    test.skip(!adminSession, '未配置 admin 联动登录变量（支持 E2E_ADMIN_OAUTH2_CLIENT / E2E_ADMIN_LOGIN_USERNAME / E2E_ADMIN_LOGIN_PASSWORD）');
 
     if (!adminSession) {
       return;

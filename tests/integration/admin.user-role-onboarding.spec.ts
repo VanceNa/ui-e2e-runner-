@@ -1,6 +1,8 @@
 import { loginByPassword } from '../../src/api/auth.js';
+import { getAdapterEnv } from '../../src/env.js';
 import { expect, test } from '../../src/fixtures/admin-auth.fixture.js';
 import { bindLivePreview, captureLivePreview, clearLivePreviewOwner, setLivePreviewOwner } from '../../src/live-preview.js';
+import { isDesktopProject } from '../../src/projects.js';
 
 function uniqueId() {
   const now = new Date();
@@ -86,7 +88,7 @@ async function fetchAdminSecrets(request: any, apiBaseURL: string, token: string
   const headers = {
     Authorization: `Bearer ${token}`,
     'CLIENT-TOC': 'MG',
-    'TENANT-ID': process.env.E2E_TENANT_ID || '1',
+    'TENANT-ID': getAdapterEnv('admin', 'TENANT_ID') || '1',
     'Content-Type': 'application/json',
   };
   const [ivResp, saltResp] = await Promise.all([
@@ -329,13 +331,13 @@ test.describe('Admin Onboarding E2E', () => {
     'UI+API: 账号密码登录 -> 新增角色 -> 授权全权限 -> 新增账号 -> 新账号登录',
     async ({ adapter, page, request, adminSession, browser }, testInfo) => {
       test.skip(adapter.projectId !== 'admin', '仅 admin 执行');
-      test.skip(testInfo.project.name !== 'chromium-desktop', '仅 desktop 执行');
+      test.skip(!isDesktopProject(testInfo.project), '仅 desktop 执行');
       test.skip(!adminSession, '未配置 admin 登录环境变量');
       if (!adminSession) return;
-      const hostKeyword = process.env.E2E_ADMIN_HOST_KEYWORD || 'xydb';
+      const hostKeyword = getAdapterEnv('admin', 'HOST_KEYWORD') || 'xydb';
       if (!adminSession.baseURL.includes(hostKeyword)) {
         throw new Error(
-          `当前 E2E_BASE_URL=${adminSession.baseURL} 不是 PC 运营端域名（应包含 ${hostKeyword}），请改为例如 https://xydb-release.local.hzzxf.com`,
+          `当前 admin baseURL=${adminSession.baseURL} 不是 PC 运营端域名（应包含 ${hostKeyword}），请改为例如 https://xydb-release.local.hzzxf.com`,
         );
       }
 
@@ -347,13 +349,13 @@ test.describe('Admin Onboarding E2E', () => {
       const displayName = `测试员${toChineseNumeral(id.slice(-3))}`;
       const phone = `13${id.slice(-9).replace(/\D/g, '0')}`;
       const userPassword = buildDefaultPasswordByPhone(phone);
-      const uiCaptchaCode = process.env.E2E_LOGIN_IMAGE_CODE || '1234';
+      const uiCaptchaCode = getAdapterEnv('admin', 'LOGIN_IMAGE_CODE') || '1234';
 
       await assertLoginPageByCodeDesign(page, adminSession.baseURL);
       await fillPasswordLogin(
         page,
-        process.env.E2E_LOGIN_USERNAME || '',
-        process.env.E2E_LOGIN_PASSWORD || '',
+        getAdapterEnv('admin', 'LOGIN_USERNAME') || '',
+        getAdapterEnv('admin', 'LOGIN_PASSWORD') || '',
         uiCaptchaCode,
       );
       const secrets = await fetchAdminSecrets(request, adminSession.apiBaseURL, adminSession.accessToken);

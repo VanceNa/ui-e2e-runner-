@@ -1,10 +1,11 @@
 import { callScenarioApi, parseJsonEnv } from '../../src/api/scenario.js';
 import { expect, test } from '../../src/fixtures/admin-auth.fixture.js';
+import { isDesktopProject } from '../../src/projects.js';
 
 test.describe('Admin Integration Template', () => {
   test('Arrange(API) -> Act(UI) -> Assert(API)', async ({ adapter, page, request, adminSession }, testInfo) => {
     test.skip(adapter.projectId !== 'admin', '仅 admin 项目执行该联动模板');
-    test.skip(testInfo.project.name !== 'chromium-desktop', '仅 desktop 项目执行该联动模板');
+    test.skip(!isDesktopProject(testInfo.project), '仅 desktop 项目执行该联动模板');
     test.skip(!adminSession, '未配置联动登录变量');
 
     const preparePath = process.env.E2E_SCENARIO_PREPARE_PATH;
